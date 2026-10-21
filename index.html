@@ -1,0 +1,2214 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Simulador interativo de fluxo de caixa com dados fictícios: premissas, três cenários, DCF, índices e relatórios em PDF, PowerPoint e Excel.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230E6378'/%3E%3Cpath d='M8 23V17M14 23V12M20 23V8' stroke='white' stroke-width='3.4' stroke-linecap='round'/%3E%3C/svg%3E">
+<title>Simulador de Fluxo de Caixa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  .copy{margin:28px 0 8px;padding-top:16px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);line-height:1.5}
+  .copy p{margin:0 0 4px}
+  /* Layout: painel de controle. Premissas fixas à esquerda, resultados em abas à direita; no celular as premissas viram um bloco recolhível acima dos resultados. */
+  :root{
+    --bg:#F1F4F5; --surface:#FFFFFF; --surface2:#E9EFF1; --ink:#12222A; --muted:#566A72; --line:#D2DCE0;
+    --accent:#0E6378; --accent-ink:#FFFFFF; --accent-bg:#DCEEF2;
+    --pos:#1F7346; --pos-bg:#E0F1E6; --neg:#B23A2B; --neg-bg:#F8E3DF; --warn:#9A6208; --warn-bg:#F6EAD2;
+    --f-display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+    --f-body:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;
+    --f-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0C1519; --surface:#132026; --surface2:#1B2B32; --ink:#E4EDEF; --muted:#93A8B0; --line:#27393F;
+      --accent:#4FB4CC; --accent-ink:#06171C; --accent-bg:#13303A;
+      --pos:#5CC48A; --pos-bg:#143124; --neg:#F0806E; --neg-bg:#3A1D19; --warn:#E0A64A; --warn-bg:#36290F;
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0C1519; --surface:#132026; --surface2:#1B2B32; --ink:#E4EDEF; --muted:#93A8B0; --line:#27393F;
+    --accent:#4FB4CC; --accent-ink:#06171C; --accent-bg:#13303A;
+    --pos:#5CC48A; --pos-bg:#143124; --neg:#F0806E; --neg-bg:#3A1D19; --warn:#E0A64A; --warn-bg:#36290F;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5}
+  .wrap{max-width:1360px;margin:0 auto;padding-inline:16px;padding-block:20px 40px}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button{font-family:inherit}
+
+  .top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between;margin-bottom:18px}
+  h1{font-family:var(--f-display);font-weight:700;font-size:clamp(25px,4vw,34px);line-height:1.1;letter-spacing:-.02em;margin:0;text-wrap:balance}
+  .sub{margin:6px 0 0;color:var(--muted);max-width:60ch}
+  .ctl{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .tag{font:500 11px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;padding:4px 8px;border:1px solid var(--line);border-radius:4px;color:var(--muted);background:var(--surface)}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:3px;gap:2px}
+  .seg button{font:500 13px var(--f-body);color:var(--muted);background:transparent;border:0;padding:6px 14px;border-radius:6px;cursor:pointer}
+  .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+
+  .layout{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;min-width:0}
+  .panel>summary{list-style:none;cursor:pointer;padding:12px 14px;font:600 14px var(--f-body);display:flex;justify-content:space-between;align-items:center}
+  .panel>summary::-webkit-details-marker{display:none}
+  .panel>summary::after{content:"";width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin-right:4px}
+  .panel[open]>summary::after{transform:rotate(-135deg)}
+  .panel .body{padding:0 14px 14px}
+  @media (min-width:980px){
+    .layout{grid-template-columns:330px minmax(0,1fr)}
+    .panel{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto}
+    .panel>summary{pointer-events:none;cursor:default}
+    .panel>summary::after{display:none}
+  }
+  .grp{margin:14px 0 0}
+  .grp:first-child{margin-top:0}
+  .grp h3{font:500 11px var(--f-mono);letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin:0 0 8px;padding-top:10px;border-top:1px solid var(--line)}
+  .grp:first-child h3{border-top:0;padding-top:0}
+  .field{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 8px;align-items:center;margin-bottom:11px}
+  .field label{font-size:13px}
+  .field output{font:500 12px var(--f-mono);font-variant-numeric:tabular-nums}
+  .field input[type=range]{grid-column:1/-1;width:100%;margin:0;accent-color:var(--accent)}
+  .money{grid-column:1/-1;display:flex;align-items:center;border:1px solid var(--line);border-radius:6px;background:var(--bg);padding-inline:8px}
+  .money span{font:12px var(--f-mono);color:var(--muted);margin-right:6px}
+  .money input{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font:500 13px var(--f-mono);padding:7px 0;font-variant-numeric:tabular-nums}
+  .money input:focus-visible{outline:none}
+  .money:focus-within{outline:2px solid var(--accent)}
+  .chk{display:flex;gap:8px;align-items:center;margin-bottom:11px;font-size:13px}
+  .chk input{accent-color:var(--accent);width:16px;height:16px;margin:0}
+  .btn{font:500 13px var(--f-body);border:1px solid var(--line);background:var(--bg);color:var(--ink);padding:7px 12px;border-radius:6px;cursor:pointer;margin-top:4px}
+  .btn:hover{border-color:var(--accent)}
+
+  .results{min-width:0}
+  .alert{border-radius:8px;padding:10px 14px;margin-bottom:12px}
+  .alert.bad{background:var(--neg-bg)}
+  .alert.ok{background:var(--pos-bg)}
+  .alert b{font-weight:600}
+  .alert.bad b{color:var(--neg)}
+  .alert.ok b{color:var(--pos)}
+  .kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:16px}
+  @media (max-width:560px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .kpi{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 14px;min-width:0}
+  .kpi .l{font:500 11px var(--f-mono);text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+  .kpi .v{font:700 24px/1.2 var(--f-display);letter-spacing:-.01em;margin-top:3px;font-variant-numeric:tabular-nums}
+  .kpi .v.neg{color:var(--neg)}
+  .kpi .n{font-size:12px;color:var(--muted);margin-top:2px}
+
+  .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:14px;overflow-x:auto}
+  .tabs button{font:500 14px var(--f-body);background:none;border:0;padding:10px 14px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
+  .tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:14px;min-width:0}
+  .card h2{font:600 15px var(--f-body);margin:0}
+  .hint{color:var(--muted);font-size:12.5px;margin:2px 0 10px}
+  .lead{margin:0 0 14px;max-width:70ch}
+  svg{display:block;max-width:100%;height:auto}
+  svg text{font-family:var(--f-mono);font-size:11px;fill:var(--muted)}
+  svg text.lab{fill:var(--ink)}
+  svg text.vl{font-size:10.5px;fill:var(--muted)}
+  svg text.halo,svg text.vl{paint-order:stroke;stroke:var(--surface);stroke-width:3px;stroke-linejoin:round}
+  svg text.vl.neg{fill:var(--neg)}
+  .gl{stroke:var(--line);stroke-width:1}
+  .zl{stroke:var(--muted);stroke-width:1;stroke-dasharray:3 3}
+  .ln{fill:none;stroke:var(--accent);stroke-width:2.2;stroke-linejoin:round;stroke-linecap:round}
+  .ar{fill:var(--accent);opacity:.14}
+  .bpos{fill:var(--pos)} .bneg{fill:var(--neg)} .btot{fill:var(--accent)}
+  .hit{fill:transparent;cursor:crosshair}
+  .pt{fill:var(--surface);stroke:var(--accent);stroke-width:2}
+  .ptm{fill:var(--surface);stroke:var(--warn);stroke-width:2.5}
+  .s-base{stroke:var(--accent)} .s-otim{stroke:var(--pos)} .s-pess{stroke:var(--neg)}
+  svg text.t-base{fill:var(--accent)} svg text.t-otim{fill:var(--pos)} svg text.t-pess{fill:var(--neg)}
+  .readout{margin:8px 0 0;font:12px var(--f-mono);color:var(--muted);min-height:1.5em;font-variant-numeric:tabular-nums}
+
+  .tw{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface);margin-bottom:14px}
+  table{border-collapse:collapse;width:100%;font:12px var(--f-mono);font-variant-numeric:tabular-nums}
+  th,td{padding:6px 10px;text-align:right;white-space:nowrap}
+  thead th{font-weight:500;color:var(--muted);border-bottom:1px solid var(--line);padding-block:9px}
+  th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:var(--surface);z-index:1;font-family:var(--f-body);font-size:12.5px}
+  tr.t td{font-weight:600;background:var(--surface2)}
+  tr.sec td{font:500 11px var(--f-mono);text-transform:uppercase;letter-spacing:.07em;color:var(--accent);padding-top:14px;background:var(--surface)}
+  td.neg{color:var(--neg)}
+  th.tot,td.tot{border-left:1px solid var(--line);font-weight:600}
+  td.act,th.act{background:var(--accent-bg)}
+  tr.t td.act{background:var(--accent-bg)}
+
+  .idx-h{font:500 11px var(--f-mono);letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin:18px 0 8px}
+  .idx-h:first-child{margin-top:0}
+  .idx-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+  .idx{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:3px;min-width:0}
+  .idx .n{font-size:13px;color:var(--muted)}
+  .idx .v{font:700 22px/1.2 var(--f-display);font-variant-numeric:tabular-nums}
+  .idx .f{font:11.5px/1.4 var(--f-mono);color:var(--muted)}
+  .chip{display:inline-block;font:500 11px var(--f-mono);padding:2px 7px;border-radius:4px;align-self:flex-start;margin-top:4px}
+  .chip.ok{background:var(--pos-bg);color:var(--pos)}
+  .chip.warn{background:var(--warn-bg);color:var(--warn)}
+  .chip.bad{background:var(--neg-bg);color:var(--neg)}
+  .scen-notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:14px}
+  .scen-notes div{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:12.5px;color:var(--muted)}
+  .scen-notes b{display:block;color:var(--ink);font-size:13px;margin-bottom:2px}
+  .foot{margin-top:18px;color:var(--muted);font-size:12px;max-width:80ch}
+  .field select{grid-column:1/-1;width:100%;font:500 13px var(--f-body);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 8px}
+  .ctl .btn{margin-top:0;text-decoration:none;display:inline-block;line-height:1.4}
+  .mailmsg{font:12px var(--f-mono);color:var(--muted);width:100%;margin:0}
+  .exp{position:relative;display:inline-block}
+  .exp #expbtn{display:inline-flex;align-items:center;gap:6px;font-weight:600;background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .exp #expbtn:hover:not(:disabled){filter:brightness(1.1);border-color:var(--accent)}
+  .exp .chev{width:14px;height:14px;transition:transform .15s}
+  .exp #expbtn[aria-expanded="true"] .chev{transform:rotate(180deg)}
+  .expmenu{position:absolute;top:calc(100% + 6px);left:0;z-index:30;min-width:260px;display:flex;flex-direction:column;gap:2px;padding:4px;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:0 10px 28px rgba(0,0,0,.2)}
+  .expmenu button{display:flex;flex-direction:column;align-items:flex-start;gap:1px;width:100%;text-align:left;font:inherit;color:var(--ink);background:none;border:0;border-radius:6px;padding:8px 10px;cursor:pointer}
+  #mailbtn{white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+  .expmenu a{display:flex;flex-direction:column;align-items:flex-start;gap:1px;width:100%;text-align:left;font:inherit;color:var(--ink);text-decoration:none;border-radius:6px;padding:8px 10px;cursor:pointer;box-sizing:border-box}
+  .expmenu a b{font-weight:600;font-size:14px}
+  .expmenu a span{font-size:12px;color:var(--muted)}
+  .expmenu a:hover,.expmenu a:focus-visible{background:var(--accent-bg)}
+  .expmenu button b{font-weight:600;font-size:14px}
+  .expmenu button span{font-size:12px;color:var(--muted)}
+  .expmenu button:hover,.expmenu button:focus-visible{background:var(--accent-bg)}
+  .fhint{margin:-4px 0 12px;font-size:12px;color:var(--muted)}
+  .field input[disabled]{opacity:.4}
+  .field input.txt{grid-column:1/-1;width:100%;font:500 13px var(--f-body);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 8px}
+  .sl{display:block;font:500 11px var(--f-mono);letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+  select.inl{font:500 13px var(--f-body);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 8px;max-width:100%}
+  td.sneg{background:var(--neg-bg);color:var(--neg)}
+  td.sc0{font-weight:700;outline:2px solid var(--accent);outline-offset:-2px}
+  .money:has(input:disabled){opacity:.4}
+  .field select:disabled{opacity:.4}
+  .hist{display:flex;gap:6px;position:sticky;top:0;z-index:2;background:var(--accent-bg);border:1px solid var(--accent);border-radius:8px;padding:6px;margin-bottom:14px}
+  .hist .btn{margin-top:0;flex:1 1 0;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 6px;font-weight:600;white-space:nowrap}
+  .btn svg{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .hist .btn.prim{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .hist .btn.alt{background:var(--surface);border-color:var(--accent);color:var(--accent)}
+  .hist .btn.prim:hover:not(:disabled){filter:brightness(1.1)}
+  .hist .btn:disabled{opacity:.45}
+  .hist .btn.prim:disabled:hover{border-color:var(--accent)}
+  .btn:disabled{opacity:.4;cursor:default}
+  .btn:disabled:hover{border-color:var(--line)}
+  .by{font:12px var(--f-mono);color:var(--muted);margin:8px 0 0}
+  .presets{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+  .presets .pl{font:500 11px var(--f-mono);letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-right:2px}
+  .presets button{font:500 13px var(--f-body);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:6px 12px;cursor:pointer}
+  .presets button:hover{border-color:var(--accent)}
+  .presets button[aria-pressed="true"]{background:var(--accent-bg);border-color:var(--accent);color:var(--ink)}
+  .pnote{background:var(--accent-bg);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px}
+  .pnote b{font-weight:600}
+  .about{margin-top:18px}
+  .about summary{cursor:pointer;font:600 14px var(--f-body)}
+  .about ul{margin:10px 0 0;padding-left:18px;color:var(--muted);font-size:13px;max-width:80ch}
+  .about li{margin-bottom:6px}
+  .filebar{display:grid;gap:8px;margin:-4px 0 14px}
+  .filebar .btn{margin-top:0;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:600;width:100%;background:var(--surface);border-color:var(--accent);color:var(--accent)}
+  .filebar .btn:hover{background:var(--accent-bg)}
+  .filebar .tpl{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+  .filebar .tpl button{font:500 12px var(--f-body);background:none;border:1px solid var(--line);color:var(--accent);border-radius:999px;padding:3px 10px;cursor:pointer}
+  .filebar .tpl button:hover{border-color:var(--accent)}
+  .filebar .fnote{font-size:12px;color:var(--muted);margin:0}
+  .filebar .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .idbox{margin:0 0 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:0 12px 4px}
+  .idbox>summary{cursor:pointer;font:600 13px var(--f-body);padding:10px 0;color:var(--ink)}
+  .idbox .field{display:block;margin:0 0 10px}
+  .idbox .field label{display:block;margin:0 0 4px}
+  .idbox .field input.txt{box-sizing:border-box}
+  .idbox .logorow{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+  .idbox .logorow input[type=file]{font:12px var(--f-body);max-width:100%}
+  .idbox .logorow img{max-height:36px;max-width:120px;border:1px solid var(--line);border-radius:4px;background:#fff;padding:2px}
+  .idbox .logorow .btn{margin-top:0;padding:4px 10px;font-size:12px}
+  .idbox .fnote{font-size:12px;color:var(--muted);margin:0 0 8px}
+  .imp{display:flex;gap:12px;align-items:flex-start;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;background:var(--accent-bg);color:var(--ink)}
+  .imp.err{background:var(--neg-bg)}
+  .imp .tx{flex:1;min-width:0;overflow-wrap:anywhere}
+  .imp b{font-weight:600}
+  .imp ul{margin:6px 0 0;padding-left:18px;color:var(--muted)}
+  .imp .x{font:500 12px var(--f-body);background:none;border:1px solid var(--line);border-radius:6px;padding:3px 8px;cursor:pointer;color:var(--ink)}
+  [hidden]{display:none!important}
+  @media (prefers-reduced-motion:no-preference){.seg button,.tabs button{transition:background .15s,color .15s}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Simulador de Fluxo de Caixa</h1>
+      <p class="sub"><span id="subpre">Modelo educacional com dados fictícios da</span> <span id="emp"></span> · <span id="per"></span>. Altere as premissas ao lado e veja caixa, resultado e índices recalculados na hora.</p>
+      <p class="by" id="by"></p>
+    </div>
+    <div class="ctl">
+      <span class="tag" id="tag">Dados fictícios</span>
+      <div class="seg" id="seg" role="group" aria-label="Cenário"></div>
+      <span class="exp" id="exp" hidden><button class="btn" id="expbtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="expmenu" title="Exportar o relatório completo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12"/><path d="m7 11 5 5 5-5"/><path d="M5 20h14"/></svg>Exportar<svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button><div class="expmenu" id="expmenu" role="menu" aria-label="Formato do relatório" hidden><button type="button" role="menuitem" data-x="pdf"><b>PDF</b><span>Relatório para leitura e impressão</span></button><button type="button" role="menuitem" data-x="pptx"><b>PowerPoint</b><span>Apresentação com gráficos editáveis</span></button><button type="button" role="menuitem" data-x="xlsx"><b>Excel</b><span>Resultados em planilha, com abas</span></button></div></span>
+      <span class="exp" id="mailw"><button class="btn" id="mailbtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="mailmenu" title="Abre uma mensagem nova com o resumo em texto">Abrir no e-mail<svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button><div class="expmenu" id="mailmenu" role="menu" aria-label="Onde abrir a mensagem" hidden><a role="menuitem" id="m-gmail" target="_blank" rel="noopener noreferrer"><b>Gmail</b><span>Abre a mensagem no navegador</span></a><a role="menuitem" id="m-outlook" target="_blank" rel="noopener noreferrer"><b>Outlook.com</b><span>Conta pessoal (Hotmail, Live)</span></a><a role="menuitem" id="m-o365" target="_blank" rel="noopener noreferrer"><b>Outlook 365</b><span>Conta de trabalho ou escola</span></a><a role="menuitem" id="m-app" href="mailto:"><b>Programa instalado</b><span>Outlook, Mail ou outro do computador</span></a></div></span>
+      <button class="btn" id="copy" type="button" title="Copia um resumo formatado, com gráficos, para colar no corpo do e-mail">Copiar resumo</button>
+      <p class="mailmsg" id="mailmsg" aria-live="polite">O resumo vai no corpo da mensagem; anexos não são possíveis a partir desta página.</p>
+    </div>
+  </header>
+
+  <div class="layout">
+    <details class="panel" id="panel">
+      <summary>Premissas</summary>
+      <div class="body">
+        <div class="hist" role="toolbar" aria-label="Histórico de alterações"><button class="btn prim" id="undo" type="button" title="Desfazer (Ctrl+Z)" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg><span>Desfazer</span></button><button class="btn prim" id="redo" type="button" title="Refazer (Ctrl+Y)" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg><span>Refazer</span></button><button class="btn alt" id="reset" type="button" title="Restaurar exemplo" aria-label="Restaurar exemplo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg><span>Restaurar</span></button></div>
+        <div class="filebar">
+          <button class="btn" id="import" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg><span>Importar arquivo (Excel ou CSV)</span></button>
+          <input type="file" id="impfile" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+          <div class="tpl" id="tpl" hidden>Baixar modelo: <button type="button" data-dl="xlsx">Excel</button><button type="button" data-dl="csv">CSV</button></div>
+          <div class="row2"><button class="btn" id="projsave" type="button" title="Salva as premissas, o cenário e a identidade em um arquivo .json">Salvar projeto</button><button class="btn" id="projopen" type="button" title="Abre um projeto salvo anteriormente">Abrir projeto</button></div>
+          <input type="file" id="projfile" accept=".json,application/json" hidden>
+          <p class="fnote" id="fnote" aria-live="polite">O modelo sai com os valores atuais da tela. Os arquivos são lidos no seu navegador e não são enviados a lugar nenhum.</p>
+        </div>
+        <details class="idbox" id="idbox"><summary>Identidade do relatório (opcional)</summary>
+          <div class="field"><label for="id-cons">Consultor ou consultoria</label><input type="text" class="txt" id="id-cons" maxlength="60" autocomplete="off"></div>
+          <div class="field"><label for="id-cont">Contato (e-mail, telefone ou site)</label><input type="text" class="txt" id="id-cont" maxlength="80" autocomplete="off"></div>
+          <div class="field"><label for="id-logo">Logotipo (PNG, JPG ou WebP)</label><div class="logorow"><input type="file" id="id-logo" accept="image/png,image/jpeg,image/webp"><img id="logo-prev" alt="Prévia do logotipo" hidden><button class="btn" id="logo-rm" type="button" hidden>Remover</button></div></div>
+          <p class="fnote" id="id-note" aria-live="polite">Entra na capa e no rodapé do PDF, do PowerPoint, do Excel e do resumo para e-mail. Fica salvo neste navegador e no arquivo de projeto.</p>
+        </details>
+        <div id="fields"></div>
+      </div>
+    </details>
+
+    <section class="results" aria-label="Resultados">
+      <div id="imprep"></div>
+      <div class="presets" id="presets"></div>
+      <div id="pnote"></div>
+      <div id="alert"></div>
+      <div class="kpis" id="kpis"></div>
+      <div class="tabs" id="tabs" role="tablist"></div>
+
+      <div id="p-resumo">
+        <p class="lead" id="lead"></p>
+        <div class="card">
+          <h2>Saldo de caixa mês a mês</h2>
+          <p class="hint">Toque ou passe o cursor sobre uma coluna para ver os valores do mês.</p>
+          <div id="c-cash"></div>
+          <p class="readout" id="ro"></p>
+        </div>
+        <div class="card">
+          <h2>Do saldo inicial ao final</h2>
+          <p class="hint">Quanto cada atividade adiciona ou consome de caixa no período.</p>
+          <div id="c-wf"></div>
+        </div>
+      </div>
+
+      <div id="p-proj" hidden>
+        <div class="tw" id="table"></div>
+        <p class="hint">Valores em R$ mil. Parênteses indicam saída ou valor negativo. A variação do capital de giro usa os prazos médios de recebimento, estoque e pagamento.</p>
+      </div>
+
+      <div id="p-idx" hidden></div>
+
+      <div id="p-cen" hidden>
+        <div class="scen-notes" id="scen-notes"></div>
+        <div class="card">
+          <h2>Saldo de caixa por cenário</h2>
+          <p class="hint">As três curvas usam as mesmas premissas; só mudam os ajustes de cada cenário.</p>
+          <div id="c-sc"></div>
+        </div>
+        <div class="tw" id="scen-table"></div>
+      </div>
+
+      <div id="p-sens" hidden>
+        <div class="card">
+          <h2>Sensibilidade do caixa</h2>
+          <p class="hint">Cruza o prazo médio de recebimento (linhas) com o CMV ou o custo dos serviços (colunas) no cenário selecionado. Valores em R$ mil; células vermelhas indicam caixa negativo.</p>
+          <label for="sens-m" class="sl">Indicador exibido</label>
+          <select id="sens-m" class="inl"><option value="min">Menor saldo de caixa no período</option><option value="fim">Saldo final de caixa</option></select>
+        </div>
+        <div class="tw" id="sens-table"></div>
+      </div>
+
+      <details class="card about">
+        <summary>Como o modelo funciona e quais são os limites</summary>
+        <ul>
+          <li>Os números dos exemplos são fictícios e o modelo é educacional. Quando você informa o nome da empresa e as próprias premissas, o resultado é uma simulação sua: não é auditado, não substitui a contabilidade e não é recomendação financeira.</li>
+          <li>Capital de giro: contas a receber, estoque e fornecedores vêm dos prazos médios (PMR, PME e PMP). A compra do período é aproximada pelo CMV.</li>
+          <li>Impostos: três regimes simplificados. Simples usa só a alíquota efetiva; Presumido soma 2,28% (comércio) ou 7,68% (serviços em geral) de IR e CSLL sobre a receita bruta; Real aplica a alíquota informada sobre o lucro positivo. Em Serviços, o ISS (de 2% a 5%, conforme o município) e o PIS e COFINS entram como alíquotas efetivas sobre a receita. Créditos de PIS, COFINS e ICMS, adicional de IR e compensação de prejuízo não são modelados.</li>
+          <li>Inadimplência: percentual da receita bruta que nunca é recebido e entra como despesa no resultado e como perda de caixa.</li>
+          <li>Dívidas: duas linhas, cada uma com saldo, juros, prazo restante e sistema (SAC ou Tabela Price). Os juros incidem sobre o saldo do início do mês.</li>
+          <li>Tipo de empresa: em Serviços o estoque é zerado, o custo passa a ser o custo dos serviços prestados e a sazonalidade segue um perfil mais suave. Serviços com bases de presunção diferentes, como saúde e transporte, exigem ajuste manual.</li>
+          <li>Sazonalidade: perfis genéricos (varejo, com pico em dezembro, ou serviços). Pode ser desligada.</li>
+          <li>Importação: aceita .xlsx ou .csv com uma linha por premissa (colunas Campo, Valor e Chave). O arquivo é lido no navegador. Valores fora da faixa ou não reconhecidos são ignorados com aviso, linhas em branco mantêm o valor atual e a importação inteira pode ser desfeita.</li>
+          <li>Relatório: os botões PDF, PowerPoint e Excel geram o arquivo no seu navegador, com premissas, projeção mensal, índices, cenários e sensibilidade do momento. No Excel os valores saem em reais, como números, e o total de cada linha da projeção é uma fórmula SUM. Os números da simulação não saem do navegador; só as bibliotecas de geração do arquivo são baixadas de um CDN. O e-mail não leva anexo: salve o arquivo e anexe-o à mensagem no Outlook.</li>
+          <li>Valor da empresa (DCF): fluxo de caixa livre do período mais perpetuidade, anualizado, descontado pelo WACC informado. É uma estimativa simplificada, sensível à taxa e ao crescimento escolhidos.</li>
+          <li>Referências dos índices (Saudável, Atenção, Crítico): faixas genéricas de mercado. O adequado varia por setor, porte e política de crédito.</li>
+        </ul>
+      </details>
+    </section>
+  </div>
+  <footer class="copy"><p>© 2026 Carlo Esposito. Todos os direitos reservados.</p><p>Simulador com dados fictícios para fins educacionais e de demonstração. Não constitui auditoria, parecer contábil nem recomendação financeira.</p></footer>
+</div>
+
+<script>
+//#core-start
+const SEASON=[0.92,0.90,0.95,0.97,1.00,0.98,1.00,1.02,1.03,1.05,1.10,1.18];
+const SEASON_S=[0.95,0.97,1.00,1.02,1.03,1.02,1.00,1.01,1.03,1.04,1.03,0.92];
+const MESES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+const SCEN={
+  base:{nome:'Base',gD:0,cmvD:0,pmrD:0,fixF:1},
+  otim:{nome:'Otimista',gD:0.5,cmvD:-1.0,pmrD:-4,fixF:0.99},
+  pess:{nome:'Pessimista',gD:-0.7,cmvD:1.0,pmrD:5,fixF:1.02}
+};
+const DEFAULTS={receita:1200000,cresc:1.2,sazon:true,cmv:65,fixas:165000,infl:0.4,despVar:6,inad:1,dep:18000,
+  regime:2,impV:9,ir:34,
+  pmr:38,pme:45,pmp:32,capex:25000,imob:1800000,
+  d1S:900000,d1T:1.6,d1N:24,d1Sys:1,d2S:600000,d2T:1.2,d2N:36,d2Sys:0,
+  caixa:750000,dist:20,wacc:18,g:4,mesIni:10,anoIni:2026,n:24,tipo:0,iss:5,pc:3.65,d1On:true,d2On:true,nome:''};
+const DEF_S={receita:900000,cresc:1.0,cmv:53,fixas:220000,infl:0.4,despVar:3,inad:2,dep:10000,regime:1,impV:8.5,ir:34,pmr:45,pme:0,pmp:30,capex:15000,imob:600000,d1S:400000,d1T:1.7,d1N:24,d1Sys:1,d2S:200000,d2T:1.3,d2N:36,d2Sys:0,caixa:450000,dist:30,wacc:20,g:4};
+
+/* cronograma de uma dívida: sys 0 = SAC (principal constante), 1 = Tabela Price (parcela constante) */
+function schedule(d,len){
+  const out=[]; let bal=d.s; const i=d.i/100;
+  const pmt=d.sys===1?(i>0?d.s*i/(1-Math.pow(1+i,-d.n)):d.s/d.n):0;
+  for(let k=0;k<len;k++){
+    const it=bal*i; let pr=0;
+    if(bal>0.005){
+      if(k>=d.n-1)pr=bal;
+      else pr=d.sys===1?Math.min(bal,pmt-it):Math.min(bal,d.s/d.n);
+    }
+    bal-=pr; out.push({it,pr,bal});
+  }
+  return out;
+}
+
+function compute(p,key){
+  const S=SCEN[key], N=p.n, sv=p.tipo===1, pme=sv?0:p.pme, pres=sv?0.0768:0.0228;
+  const taxV=((p.tipo===1&&p.regime!==0)?(p.iss+p.pc):p.impV)/100, varPct=p.despVar/100, inadPct=p.inad/100, cmvPct=(p.cmv+S.cmvD)/100, g=(p.cresc+S.gD)/100;
+  const pmr=Math.max(0,p.pmr+S.pmrD), irR=p.ir/100, reg=p.regime;
+  const taxOn=(rb,base)=>reg===0?0:reg===1?rb*pres:Math.max(0,base)*irR;
+  const s1=p.d1On?p.d1S:0, s2=p.d2On?p.d2S:0;
+  const sch=[{s:s1,i:p.d1T,n:p.d1N,sys:p.d1Sys},{s:s2,i:p.d2T,n:p.d2N,sys:p.d2Sys}].map(d=>schedule(d,N+12));
+  const D0=s1+s2;
+  const rl0=p.receita*(1-taxV), cmv0=rl0*p.cmv/100;
+  let cr=p.receita*p.pmr/30, est=cmv0*pme/30, forn=cmv0*p.pmp/30;
+  const ativo0=p.caixa+cr+est+p.imob;
+  let nwcPrev=cr+est-forn, caixa=p.caixa, imob=p.imob;
+  const pl0=ativo0-forn-D0; let pl=pl0;
+  const rows=[];
+  for(let i=0;i<N;i++){
+    const mi=(p.mesIni+i)%12, yr=p.anoIni+Math.floor((p.mesIni+i)/12);
+    const season=p.sazon?(sv?SEASON_S:SEASON)[mi]:1;
+    const rb=p.receita*Math.pow(1+g,i+1)*season;
+    const imp=rb*taxV, rl=rb-imp, cmv=rl*cmvPct, lb=rl-cmv;
+    const fix=p.fixas*S.fixF*Math.pow(1+p.infl/100,i), vr=rb*varPct, inad=rb*inadPct;
+    const ebitda=lb-fix-vr-inad, dep=p.dep, ebit=ebitda-dep;
+    const jur=sch[0][i].it+sch[1][i].it, amort=sch[0][i].pr+sch[1][i].pr, debt=sch[0][i].bal+sch[1][i].bal;
+    const lair=ebit-jur, ir=taxOn(rb,lair), ll=lair-ir;
+    cr=rb*pmr/30; est=cmv*pme/30; forn=cmv*p.pmp/30;
+    const nwc=cr+est-forn, dNwc=nwc-nwcPrev; nwcPrev=nwc;
+    const fco=ll+dep-dNwc, capex=p.capex, fci=-capex;
+    const div=Math.max(0,ll)*p.dist/100, fcf=-amort-div;
+    const net=fco+fci+fcf, ini=caixa; caixa+=net;
+    const nopat=ebit-taxOn(rb,ebit), fcl=nopat+dep-dNwc-capex;
+    imob+=capex-dep; pl+=ll-div;
+    rows.push({i,mi,yr,rb,imp,rl,cmv,lb,fix,vr,inad,ebitda,dep,ebit,jur,lair,ir,ll,dNwc,fco,capex,fci,amort,div,fcf,net,ini,fim:caixa,cr,est,forn,nwc,debt,imob,pl,nopat,fcl});
+  }
+  const sum=k=>rows.reduce((a,r)=>a+r[k],0);
+  const T={};
+  ['rb','imp','rl','cmv','lb','fix','vr','inad','ebitda','dep','ebit','jur','lair','ir','ll','dNwc','fco','capex','fci','amort','div','fcf','net','nopat','fcl'].forEach(k=>T[k]=sum(k));
+  T.ini=rows[0].ini; T.fim=rows[N-1].fim;
+  const L=rows[N-1];
+  const parc=sch.reduce((a,x)=>a+x.slice(N,N+12).reduce((b,y)=>b+y.pr,0),0);
+  const ac=L.fim+L.cr+L.est, pc=L.forn+parc;
+  const ativo=ac+L.imob, plAvg=(pl0+L.pl)/2;
+  const ci0=pl0+D0-p.caixa, ci1=L.pl+L.debt-L.fim, ciAvg=(ci0+ci1)/2;
+  const minV=Math.min(...rows.map(q=>q.fim)), minI=rows.findIndex(q=>q.fim===minV);
+  const negMonths=rows.filter(q=>q.fim<0).length;
+  const avgNet=T.net/N;
+  const mc=(1-taxV)*(1-cmvPct)-varPct-inadPct-(reg===1?pres:0);
+  const pe=mc>0?(T.fix/N+p.dep+T.jur/N)/mc:null;
+  const rbAvg=T.rb/N;
+  const wacc=p.wacc/100, gg=p.g/100, rm=Math.pow(1+wacc,1/12)-1;
+  let pv=0; rows.forEach((q,i)=>{pv+=q.fcl/Math.pow(1+rm,i+1)});
+  const tv=wacc>gg?(T.fcl*12/N)*(1+gg)/(wacc-gg):null;
+  const ev=tv==null?null:pv+tv/Math.pow(1+wacc,N/12);
+  const eq=ev==null?null:ev-(D0-p.caixa);
+  const m={ac,pc,parc,ativo,plAvg,ativo0,pl0,ciAvg,minV,minI,negMonths,avgNet,mc,pe,rbAvg,ev,eq,D0,pmr,pme,pmp:p.pmp,
+    margSeg:pe!=null&&rbAvg>0?(rbAvg-pe)/rbAvg:null};
+  return {key,rows,T,pl0,m};
+}
+//#core-end
+
+const nf0=new Intl.NumberFormat('pt-BR',{maximumFractionDigits:0});
+const nf1=new Intl.NumberFormat('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1});
+const nf2=new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const mil=v=>nf0.format(Math.round(v/1000)+0);
+let MONEY_FULL=false;
+const REPORT_FULL=false; /* true: relatórios com valores completos (R$ 2.180.000) em vez de abreviados (R$ 2,18 mi) */
+const money=v=>{if(v==null||!isFinite(v))return 'n/d';if(MONEY_FULL){const r=Math.round(Math.abs(v));return (v<0&&r>0?'−':'')+'R$ '+nf0.format(r)}const a=Math.abs(v),s=v<0?'−':'';return a>=1e6?s+'R$ '+nf2.format(a/1e6)+' mi':s+'R$ '+nf0.format(Math.round(a/1000))+' mil'};
+const pct=v=>v==null||!isFinite(v)?'n/d':nf1.format(v*100)+'%';
+const xx=v=>v==null||!isFinite(v)?'n/d':nf2.format(v)+'x';
+const dias=v=>nf0.format(Math.round(v))+' dias';
+const cell=v=>Math.abs(v)<500?'–':(v<0?'('+mil(-v)+')':mil(v));
+const lab=q=>MESES[q.mi]+'/'+String(q.yr).slice(2);
+
+function niceTicks(min,max,n){
+  const span=(max-min)||1, raw=span/n, mag=Math.pow(10,Math.floor(Math.log10(raw))), f=raw/mag;
+  const step=(f<=1?1:f<=2?2:f<=5?5:10)*mag, t0=Math.floor(min/step+1e-9)*step, out=[];
+  for(let v=t0;v<=max+step*0.001;v+=step)out.push(+v.toFixed(6));
+  if(out[out.length-1]<max)out.push(+(out[out.length-1]+step).toFixed(6));
+  return out;
+}
+
+/* ---------- estado ---------- */
+let P={...DEFAULTS}, SC='base', TAB='resumo', RES=null, ALL=null, hoverI=null;
+const KEY='vale-verde-fluxo-v1';
+try{
+  const saved=JSON.parse(localStorage.getItem(KEY)||'null');
+  if(saved&&saved.P){for(const k in DEFAULTS){if(typeof saved.P[k]===typeof DEFAULTS[k])P[k]=saved.P[k]}P.nome=String(P.nome||'').replace(/[\u0000-\u001f\u007f]/g,'').slice(0,60)}
+  if(saved&&SCEN[saved.SC])SC=saved.SC;
+}catch(e){}
+const cleanTxt=(v,n)=>String(v==null?'':v).replace(/[\u0000-\u001f\u007f]/g,'').slice(0,n);
+let ID={consultor:'',contato:''}, LOGO=null;
+const IDKEY=KEY+'-id';
+const logoOk=l=>!!(l&&typeof l.data==='string'&&/^data:image\/png;base64,[A-Za-z0-9+\/=]+$/.test(l.data)&&l.data.length<1200000&&Number.isInteger(l.w)&&Number.isInteger(l.h)&&l.w>0&&l.h>0&&l.w<=2000&&l.h<=2000);
+try{const sid=JSON.parse(localStorage.getItem(IDKEY)||'null');if(sid){ID.consultor=cleanTxt(sid.consultor,60);ID.contato=cleanTxt(sid.contato,80);if(logoOk(sid.logo))LOGO=sid.logo}}catch(e){}
+function saveID(){try{localStorage.setItem(IDKEY,JSON.stringify({consultor:ID.consultor,contato:ID.contato,logo:LOGO}))}catch(e){}}
+let CUR=null,HIST=[],FUT=[],burst=0,restoring=false;
+const snap=()=>JSON.stringify({P,SC,PRESET});
+function saveLS(){try{localStorage.setItem(KEY,JSON.stringify({P,SC}))}catch(e){}}
+function updateHistBtns(){const u=document.getElementById('undo'),r=document.getElementById('redo');if(u)u.disabled=!HIST.length;if(r)r.disabled=!FUT.length}
+function commit(discrete){
+  if(restoring)return;
+  const now=snap(); if(now===CUR)return;
+  if(discrete){clearTimeout(burst);burst=0}
+  if(!burst){HIST.push(CUR);if(HIST.length>100)HIST.shift();FUT=[]}
+  clearTimeout(burst);burst=setTimeout(()=>{burst=0},700);
+  CUR=now;updateHistBtns();
+}
+function persist(d){commit(d);saveLS()}
+function restore(str){
+  restoring=true;
+  const o=JSON.parse(str);P=o.P;SC=o.SC;PRESET=o.PRESET;CUR=str;
+  buildFields();buildSeg();renderPresets();saveLS();update();
+  restoring=false;updateHistBtns();
+}
+function undo(){if(!HIST.length)return;clearTimeout(burst);burst=0;FUT.push(CUR);restore(HIST.pop())}
+function redo(){if(!FUT.length)return;clearTimeout(burst);burst=0;HIST.push(CUR);restore(FUT.pop())}
+
+/* ---------- campos de premissas ---------- */
+const fmtU={pct:v=>nf1.format(v)+' %',dias:v=>nf0.format(v)+' dias',pa:v=>nf1.format(v)+' % a.a.',meses:v=>nf0.format(v)+' meses',pct2:v=>nf2.format(v)+' %',pm:v=>nf1.format(v)+' % a.m.'};
+const MESES_L=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+function regHint(){return ['Alíquota efetiva do Simples aplicada sobre a receita bruta. Não há IR e CSLL separados.','IR e CSLL de '+(P.tipo===1?'7,68% (serviços em geral, base de presunção de 32%)':'2,28% (comércio, bases de presunção de 8% e 12%)')+' da receita bruta, mesmo sem lucro. O adicional de IR é ignorado.','IR e CSLL calculados sobre o lucro antes do imposto, apenas quando positivo.'][P.regime]}
+const SISOPT=[[0,'SAC (principal constante)'],[1,'Tabela Price (parcela constante)']];
+const FIELDS=[
+ {g:'Empresa',items:[
+  {id:'nome',l:'Nome da empresa (opcional)',t:'txt',hint:()=>'Aparece no cabeçalho, nos relatórios e no resumo para e-mail. Em branco, usa a empresa de exemplo.'},
+  {id:'tipo',l:'Tipo de empresa',t:'sel',opts:[[0,'Comércio (venda de produtos)'],[1,'Serviços']],hint:()=>'Ao trocar o tipo, as premissas são substituídas pelo exemplo correspondente.'}]},
+ {g:'Período da simulação',items:[
+  {id:'mesIni',l:'Mês inicial',t:'sel',opts:MESES_L.map((n,i)=>[i,n])},
+  {id:'anoIni',l:'Ano inicial',t:'sel',opts:[[2026,'2026'],[2027,'2027'],[2028,'2028']]},
+  {id:'n',l:'Horizonte da projeção',t:'sel',opts:[[6,'6 meses'],[12,'12 meses'],[18,'18 meses'],[24,'24 meses'],[36,'3 anos (36 meses)'],[48,'4 anos (48 meses)'],[60,'5 anos (60 meses)']]}]},
+ {g:'Receita e custos',items:[
+  {id:'receita',l:'Receita bruta mensal de partida',t:'num',step:10000},
+  {id:'cresc',l:'Crescimento mensal da receita',t:'rng',min:-2,max:5,step:0.1,u:'pm'},
+  {id:'sazon',l:()=>P.tipo===1?'Aplicar sazonalidade de serviços':'Aplicar sazonalidade do varejo',t:'chk'},
+  {id:'cmv',l:()=>P.tipo===1?'Custo dos serviços (% da receita líquida)':'CMV (% da receita líquida)',t:'rng',min:40,max:85,step:0.5,u:'pct'},
+  {id:'fixas',l:'Despesas fixas mensais',t:'num',step:5000},
+  {id:'infl',l:'Reajuste mensal das despesas fixas',t:'rng',min:0,max:2,step:0.1,u:'pm'},
+  {id:'despVar',l:'Despesas variáveis (% da receita)',t:'rng',min:0,max:15,step:0.5,u:'pct'},
+  {id:'inad',l:'Inadimplência (% da receita bruta)',t:'rng',min:0,max:10,step:0.1,u:'pct'},
+  {id:'dep',l:'Depreciação mensal',t:'num',step:1000}]},
+ {g:'Impostos',items:[
+  {id:'regime',l:'Regime tributário',t:'sel',opts:[[0,'Simples Nacional'],[1,'Lucro Presumido'],[2,'Lucro Real']],hint:()=>regHint()},
+  {id:'impV',l:()=>P.regime===0?(P.tipo===1?'Alíquota efetiva do Simples (inclui o ISS)':'Alíquota efetiva do Simples'):'ICMS, PIS e COFINS (alíquota efetiva)',t:'rng',min:0,max:20,step:0.5,u:'pct',hide:()=>P.tipo===1&&P.regime!==0},
+  {id:'iss',l:'ISS (alíquota do município)',t:'rng',min:0,max:5,step:0.5,u:'pct',hide:()=>!(P.tipo===1&&P.regime!==0)},
+  {id:'pc',l:'PIS e COFINS (alíquota efetiva)',t:'rng',min:0,max:9.25,step:0.05,u:'pct2',hide:()=>!(P.tipo===1&&P.regime!==0)},
+  {id:'ir',l:'IR e CSLL sobre o lucro (Lucro Real)',t:'rng',min:0,max:40,step:1,u:'pct',dis:()=>P.regime!==2}]},
+ {g:'Capital de giro',items:[
+  {id:'pmr',l:'Prazo médio de recebimento',t:'rng',min:0,max:90,step:1,u:'dias'},
+  {id:'pme',l:'Prazo médio de estoque',t:'rng',min:0,max:120,step:1,u:'dias',hide:()=>P.tipo===1},
+  {id:'pmp',l:'Prazo médio de pagamento',t:'rng',min:0,max:90,step:1,u:'dias'}]},
+ {g:'Investimento',items:[
+  {id:'capex',l:'Investimento mensal (capex)',t:'num',step:1000},
+  {id:'imob',l:'Imobilizado líquido inicial',t:'num',step:50000}]},
+ {g:'Dívida 1 · Empréstimo de capital de giro (opcional)',items:[
+  {id:'d1On',l:'Possui esta dívida',t:'chk'},
+  {id:'d1S',l:'Saldo devedor',t:'num',step:50000,dis:()=>!P.d1On},
+  {id:'d1T',l:'Juros',t:'rng',min:0,max:4,step:0.1,u:'pm',dis:()=>!P.d1On},
+  {id:'d1N',l:'Prazo restante',t:'rng',min:1,max:60,step:1,u:'meses',dis:()=>!P.d1On},
+  {id:'d1Sys',l:'Sistema de amortização',t:'sel',opts:SISOPT,dis:()=>!P.d1On}]},
+ {g:'Dívida 2 · Financiamento de equipamentos (opcional)',items:[
+  {id:'d2On',l:'Possui esta dívida',t:'chk'},
+  {id:'d2S',l:'Saldo devedor',t:'num',step:50000,dis:()=>!P.d2On},
+  {id:'d2T',l:'Juros',t:'rng',min:0,max:4,step:0.1,u:'pm',dis:()=>!P.d2On},
+  {id:'d2N',l:'Prazo restante',t:'rng',min:1,max:60,step:1,u:'meses',dis:()=>!P.d2On},
+  {id:'d2Sys',l:'Sistema de amortização',t:'sel',opts:SISOPT,dis:()=>!P.d2On}]},
+ {g:'Caixa e valor',items:[
+  {id:'caixa',l:'Saldo de caixa inicial',t:'num',step:10000},
+  {id:'dist',l:'Distribuição de lucros',t:'rng',min:0,max:100,step:5,u:'pct'},
+  {id:'wacc',l:'Taxa de desconto (WACC)',t:'rng',min:8,max:30,step:0.5,u:'pa'},
+  {id:'g',l:'Crescimento na perpetuidade',t:'rng',min:0,max:8,step:0.5,u:'pa'}]}
+];
+const L=f=>typeof f.l==='function'?f.l():f.l;
+function buildFields(){
+  let h='';
+  FIELDS.forEach(grp=>{
+    h+=`<div class="grp"><h3>${grp.g}</h3>`;
+    grp.items.forEach(f=>{
+      if(f.hide&&f.hide())return;
+      if(f.t==='chk'){h+=`<label class="chk"><input type="checkbox" id="f-${f.id}" data-id="${f.id}"${P[f.id]?' checked':''}>${L(f)}</label>`}
+      else if(f.t==='txt'){h+=`<div class="field"><label for="f-${f.id}">${L(f)}</label><input type="text" class="txt" maxlength="60" autocomplete="off" id="f-${f.id}" data-id="${f.id}" data-txt="1" value="${String(P[f.id]||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}"></div>`+(f.hint?`<p class="fhint">${f.hint()}</p>`:'')}
+      else if(f.t==='sel'){h+=`<div class="field"><label for="f-${f.id}">${L(f)}</label><select id="f-${f.id}" data-id="${f.id}" data-sel="1"${f.dis&&f.dis()?' disabled':''}>${f.opts.map(([v,t])=>`<option value="${v}"${P[f.id]===v?' selected':''}>${t}</option>`).join('')}</select></div>`+(f.hint?`<p class="fhint">${f.hint()}</p>`:'')}
+      else if(f.t==='rng'){h+=`<div class="field"><label for="f-${f.id}">${L(f)}</label><output data-out="${f.id}">${fmtU[f.u](P[f.id])}</output><input type="range" id="f-${f.id}" data-id="${f.id}" min="${f.min}" max="${f.max}" step="${f.step}" value="${P[f.id]}"${f.dis&&f.dis()?' disabled':''}></div>`}
+      else{h+=`<div class="field"><label for="f-${f.id}">${L(f)}</label><div class="money"><span>R$</span><input type="text" inputmode="numeric" autocomplete="off" id="f-${f.id}" data-id="${f.id}" data-num="1" value="${nf0.format(P[f.id])}"${f.dis&&f.dis()?' disabled':''}></div></div>`}
+    });
+    h+='</div>';
+  });
+  document.getElementById('fields').innerHTML=h;
+}
+document.getElementById('fields').addEventListener('input',e=>{
+  const el=e.target, id=el.dataset.id; if(!id)return;
+  if(el.type==='checkbox'){P[id]=el.checked;if(id==='d1On'||id==='d2On'){buildFields();const cc=document.getElementById('f-'+id);if(cc)cc.focus()}}
+  else if(el.dataset.sel){P[id]=parseInt(el.value,10);if(id==='tipo'){const tp=P.tipo;PRESET=null;P={...defaultsFor(tp),tipo:tp,mesIni:P.mesIni,anoIni:P.anoIni,n:P.n,nome:P.nome};buildFields();renderPresets();const tt=document.getElementById('f-tipo');if(tt)tt.focus()}if(id==='regime'){buildFields();const rr=document.getElementById('f-regime');if(rr)rr.focus()}}
+  else if(el.dataset.txt){P[id]=el.value.replace(/[\u0000-\u001f\u007f]/g,'').slice(0,60)}
+  else if(el.dataset.num){
+    const before=el.value.slice(0,el.selectionStart||0).replace(/\D/g,'').length;
+    const digits=el.value.replace(/\D/g,'').slice(0,12);
+    P[id]=digits?parseInt(digits,10):0;
+    el.value=digits?nf0.format(P[id]):'';
+    let pos=0,seen=0;
+    while(pos<el.value.length&&seen<before){if(/\d/.test(el.value[pos]))seen++;pos++}
+    try{el.setSelectionRange(pos,pos)}catch(err){}
+  }else{const v=parseFloat(el.value);P[id]=isNaN(v)?0:v;
+    const o=document.querySelector(`[data-out="${id}"]`);
+    if(o){const f=FIELDS.flatMap(x=>x.items).find(x=>x.id===id);o.textContent=fmtU[f.u](P[id])}}
+  if(PRESET){PRESET=null;renderPresets()}
+  persist(el.type==='checkbox'||!!el.dataset.sel); update();
+});
+let resetArmed=0;
+const resetBtn=document.getElementById('reset');
+function disarmReset(){clearTimeout(resetArmed);resetArmed=0;resetBtn.querySelector('span').textContent='Restaurar';resetBtn.title='Restaurar exemplo';resetBtn.setAttribute('aria-label','Restaurar exemplo')}
+function resetAll(){
+  clearTimeout(burst);burst=0;
+  P={...DEFAULTS};SC='base';TAB='resumo';PRESET=null;hoverI=null;
+  buildFields();buildSeg();buildTabs();renderPresets();saveLS();update();
+  HIST=[];FUT=[];CUR=snap();updateHistBtns();
+}
+resetBtn.addEventListener('click',()=>{
+  if(!resetArmed){
+    resetBtn.querySelector('span').textContent='Confirmar?';
+    resetBtn.title='Clique de novo para voltar tudo ao padrão inicial e apagar o histórico';
+    resetBtn.setAttribute('aria-label','Confirmar: voltar tudo ao padrão inicial e apagar o histórico');
+    resetArmed=setTimeout(disarmReset,4000);
+    return;
+  }
+  disarmReset();resetAll();
+});
+
+/* ---------- cenário e abas ---------- */
+const seg=document.getElementById('seg');
+function buildSeg(){seg.innerHTML=Object.keys(SCEN).map(k=>`<button type="button" data-k="${k}" aria-pressed="${k===SC}">${SCEN[k].nome}</button>`).join('')}
+seg.addEventListener('click',e=>{const k=e.target.dataset.k;if(!k)return;SC=k;persist(true);buildSeg();update()});
+const TABS=[['resumo','Resumo'],['proj','Projeção'],['idx','Índices'],['cen','Cenários'],['sens','Sensibilidade']];
+const tabsEl=document.getElementById('tabs');
+function buildTabs(){
+  tabsEl.innerHTML=TABS.map(([k,n])=>`<button type="button" role="tab" data-t="${k}" aria-selected="${k===TAB}">${n}</button>`).join('');
+  TABS.forEach(([k])=>{document.getElementById('p-'+k).hidden=k!==TAB});
+}
+tabsEl.addEventListener('click',e=>{const k=e.target.dataset.t;if(!k)return;TAB=k;buildTabs();renderCharts()});
+
+/* ---------- índices ---------- */
+function status(v,okMin,warnMin,invert){
+  if(v==null||!isFinite(v))return 'bad';
+  if(invert){return v<=okMin?'ok':v<=warnMin?'warn':'bad'}
+  return v>=okMin?'ok':v>=warnMin?'warn':'bad';
+}
+function idxGroups(r,p){
+  const {T,m,rows}=r, N=rows.length, an=12/N, L=rows[N-1];
+  const dv=(a,b)=>b>0?a/b:null;
+  const dlEb=T.ebitda>0?(L.debt-L.fim)/(T.ebitda*an):null;
+  const juCov=dv(T.ebitda,T.jur), dscr=dv(T.fco+T.jur,T.jur+T.amort);
+  const conv=T.ebitda>0?T.fco/T.ebitda:null;
+  const roic=m.ciAvg>0?T.nopat*an/m.ciAvg:null, roe=m.plAvg>0?T.ll*an/m.plAvg:null;
+  const liqC=dv(m.ac,m.pc), liqS=dv(L.fim+L.cr,m.pc), liqI=dv(L.fim,m.pc);
+  const cicloO=m.pmr+m.pme, cicloF=cicloO-m.pmp;
+  const ncgDias=L.rl>0?L.nwc/(L.rl/30):null;
+  const burnTxt=m.avgNet<0&&L.fim>0?`Caixa dura cerca de ${nf1.format(L.fim/-m.avgNet)} meses neste ritmo`:'Média mensal da variação líquida de caixa';
+  const G=[
+   ['Rentabilidade',[
+    {n:'Margem bruta',v:pct(dv(T.lb,T.rl)),f:'Lucro bruto ÷ receita líquida'},
+    {n:'Margem EBITDA',v:pct(dv(T.ebitda,T.rl)),f:'EBITDA ÷ receita líquida',ref:'≥ 10%',s:status(dv(T.ebitda,T.rl),0.10,0.05)},
+    {n:'Margem líquida',v:pct(dv(T.ll,T.rl)),f:'Lucro líquido ÷ receita líquida',ref:'≥ 5%',s:status(dv(T.ll,T.rl),0.05,0)},
+    {n:'ROE',v:pct(roe),f:'Lucro líquido anualizado ÷ PL médio'},
+    {n:'ROIC',v:pct(roic),f:'NOPAT anualizado ÷ capital investido médio',ref:'≥ WACC ('+nf1.format(p.wacc)+'%)',s:roic==null?'bad':roic>=p.wacc/100?'ok':roic>=0?'warn':'bad'}]],
+   ['Liquidez',[
+    {n:'Liquidez corrente',v:xx(liqC),f:'Ativo circulante ÷ passivo circulante',ref:'≥ 1,5x',s:status(liqC,1.5,1)},
+    {n:'Liquidez seca',v:xx(liqS),f:'(Caixa + a receber) ÷ passivo circulante',ref:'≥ 1,0x',s:status(liqS,1,0.7)},
+    {n:'Liquidez imediata',v:xx(liqI),f:'Caixa ÷ passivo circulante',ref:'≥ 0,5x',s:status(liqI,0.5,0.2)},
+    {n:'Capital circulante líquido',v:money(m.ac-m.pc),f:'Ativo circulante − passivo circulante',ref:'> 0',s:m.ac-m.pc>0?'ok':'bad'}]],
+   ['Endividamento',[
+    {n:'Dívida líquida ÷ EBITDA',v:dlEb==null?'n/d':xx(dlEb),f:'(Dívida − caixa) ÷ EBITDA anualizado',ref:'≤ 2,0x',s:dlEb==null?'bad':status(dlEb,2,3.5,true)},
+    {n:'Dívida ÷ patrimônio líquido',v:xx(dv(L.debt,L.pl)),f:'Dívida bruta ÷ PL no fim do período',ref:'≤ 1,0x',s:status(dv(L.debt,L.pl),1,2,true)},
+    {n:'Cobertura de juros',v:T.jur>0?xx(juCov):'Sem dívida',f:'EBITDA ÷ juros pagos',ref:'≥ 3,0x',s:T.jur>0?status(juCov,3,1.5):'ok'},
+    {n:'Cobertura do serviço da dívida',v:(T.jur+T.amort)>0?xx(dscr):'Sem dívida',f:'(FCO + juros) ÷ (juros + amortização)',ref:'≥ 1,3x',s:(T.jur+T.amort)>0?status(dscr,1.3,1):'ok'}]],
+   ['Ciclo e capital de giro',[
+    {n:'Ciclo operacional',v:dias(cicloO),f:'Prazo de recebimento + prazo de estoque'},
+    {n:'Ciclo financeiro',v:dias(cicloF),f:'Ciclo operacional − prazo de pagamento',ref:'varia por setor'},
+    {n:'Necessidade de capital de giro',v:money(L.nwc),f:'A receber + estoque − fornecedores'},
+    {n:'NCG em dias de receita líquida',v:ncgDias==null?'n/d':dias(ncgDias),f:'NCG ÷ receita líquida diária'}]],
+   ['Caixa e valor',[
+    {n:'Fluxo operacional (FCO)',v:money(T.fco),f:'Soma do período',ref:'> 0',s:T.fco>0?'ok':'bad'},
+    {n:'Fluxo de caixa livre',v:money(T.fco+T.fci),f:'FCO − investimentos',ref:'> 0',s:T.fco+T.fci>0?'ok':'bad'},
+    {n:'Conversão de caixa',v:pct(conv),f:'FCO ÷ EBITDA',ref:'≥ 80%',s:conv==null?'bad':status(conv,0.8,0.5)},
+    {n:'Ponto de equilíbrio mensal',v:m.pe==null?'n/d':money(m.pe),f:'(Fixas + depreciação + juros) ÷ margem de contribuição'},
+    {n:'Margem de segurança',v:pct(m.margSeg),f:'(Receita média − equilíbrio) ÷ receita média',ref:'≥ 20%',s:m.margSeg==null?'bad':status(m.margSeg,0.2,0.1)},
+    {n:'Geração média de caixa por mês',v:money(m.avgNet),f:burnTxt,ref:'≥ 0',s:m.avgNet>=0?'ok':'warn'},
+    {n:'Valor da empresa (DCF)',v:money(m.ev),f:'VP do FCL do período + perpetuidade'},
+    {n:'Valor do patrimônio (DCF)',v:money(m.eq),f:'Valor da empresa − dívida líquida inicial'}]]
+  ];
+  return G;
+}
+function buildIdx(r,p){
+  const chipTxt={ok:'Saudável',warn:'Atenção',bad:'Crítico'};
+  return idxGroups(r,p).map(([g,items])=>`<h3 class="idx-h">${g}</h3><div class="idx-grid">${items.map(i=>`<div class="idx"><span class="n">${i.n}</span><span class="v">${i.v}</span><span class="f">${i.f}${i.ref?' · ref. '+i.ref:''}</span>${i.s?`<span class="chip ${i.s}">${chipTxt[i.s]}</span>`:''}</div>`).join('')}</div>`).join('');
+}
+
+/* ---------- tabela ---------- */
+const ROWS=[
+ ['sec','Demonstração de resultado'],
+ ['rb','Receita bruta',1],['imp','(−) Impostos sobre vendas',-1],['rl','Receita líquida',1,'t'],['cmv','(−) CMV',-1],['lb','Lucro bruto',1,'t'],
+ ['fix','(−) Despesas fixas',-1],['vr','(−) Despesas variáveis',-1],['inad','(−) Inadimplência',-1],['ebitda','EBITDA',1,'t'],['dep','(−) Depreciação',-1],['ebit','EBIT',1,'t'],
+ ['jur','(−) Juros',-1],['ir','(−) IR e CSLL',-1],['ll','Lucro líquido',1,'t'],
+ ['sec','Fluxo de caixa'],
+ ['ll','Lucro líquido',1],['dep','(+) Depreciação',1],['dNwc','(−) Variação do capital de giro',-1],['fco','Fluxo operacional (FCO)',1,'t'],
+ ['capex','(−) Investimentos (capex)',-1],['fci','Fluxo de investimento (FCI)',1,'t'],['amort','(−) Amortização da dívida',-1],['div','(−) Distribuição de lucros',-1],
+ ['fcf','Fluxo de financiamento (FCF)',1,'t'],['net','Variação líquida de caixa',1,'t'],['ini','Saldo inicial',1],['fim','Saldo final',1,'t']
+];
+function rowLabel(k,n){
+  if(k==='cmv'&&P.tipo===1)return n.replace('CMV','Custo dos serviços');
+  if(k==='imp')return P.regime===0?'(−) Impostos do Simples':P.tipo===1?'(−) ISS, PIS e COFINS':'(−) ICMS, PIS e COFINS';
+  return n;
+}
+function buildTable(r){
+  let h=`<table><thead><tr><th>R$ mil</th>${r.rows.map(q=>`<th>${lab(q)}</th>`).join('')}<th class="tot">Total</th></tr></thead><tbody>`;
+  ROWS.forEach(([k,n,s,t])=>{
+    if(k==='sec'){h+=`<tr class="sec"><td colspan="${r.rows.length+2}">${n}</td></tr>`;return}
+    h+=`<tr${t?' class="t"':''}><td>${rowLabel(k,n)}</td>`;
+    r.rows.forEach(q=>{const v=q[k]*s;h+=`<td class="${t&&v<-500?'neg':''}">${cell(v)}</td>`});
+    const tv=k==='ini'?r.T.ini:k==='fim'?r.T.fim:r.T[k]*s;
+    h+=`<td class="tot ${t&&tv<-500?'neg':''}">${cell(tv)}</td></tr>`;
+  });
+  return h+'</tbody></table>';
+}
+
+/* ---------- gráficos ---------- */
+function xLabels(W,ml,iw,y,rows){
+  const n=rows.length, slot=iw/n, step=Math.max(1,Math.ceil(46/slot));
+  let s='',last=null;
+  rows.forEach((q,i)=>{if(i%step===0){const t=MESES[q.mi]+(q.yr!==last?'/'+String(q.yr).slice(2):'');last=q.yr;s+=`<text x="${ml+(i+.5)*slot}" y="${y}" text-anchor="middle">${t}</text>`}});
+  return s;
+}
+function chartCash(W,r){
+  const H=316,ml=46,mr=12,iw=W-ml-mr,n=r.rows.length;
+  const x=i=>ml+(i+.5)*iw/n, bw=Math.max(4,iw/n*.55);
+  const t1=34,b1=184,t2=238,b2=284;
+  const sv=r.rows.map(q=>q.fim/1000);
+  const tk=niceTicks(Math.min(0,...sv),Math.max(...sv),4), lo=tk[0], hi=tk[tk.length-1];
+  const y=v=>b1-(v-lo)/(hi-lo)*(b1-t1);
+  const nv=r.rows.map(q=>q.net/1000), ext=Math.max(...nv.map(Math.abs),1);
+  const tk2=niceTicks(-ext,ext,2), lo2=tk2[0], hi2=tk2[tk2.length-1];
+  const y2=v=>b2-(v-lo2)/(hi2-lo2)*(b2-t2);
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Saldo de caixa e variação líquida mensal">`;
+  s+=`<text class="lab" x="${ml}" y="12">Saldo de caixa · R$ mil</text>`;
+  tk.forEach(v=>{s+=`<line class="gl" x1="${ml}" x2="${W-mr}" y1="${y(v)}" y2="${y(v)}"/><text x="${ml-6}" y="${y(v)+4}" text-anchor="end">${nf0.format(v)}</text>`});
+  if(lo<0)s+=`<line class="zl" x1="${ml}" x2="${W-mr}" y1="${y(0)}" y2="${y(0)}"/>`;
+  const pts=sv.map((v,i)=>`${x(i)},${y(v)}`), base=y(lo<0?0:lo);
+  s+=`<path class="ar" d="M${x(0)},${base} L${pts.join(' L')} L${x(n-1)},${base}Z"/><polyline class="ln" points="${pts.join(' ')}"/>`;
+  const mi=r.m.minI, mx=x(mi), my=y(sv[mi]), above=my>(t1+b1)/2, tx=Math.min(Math.max(mx,ml+34),W-mr-34);
+  {const slot=iw/n,stp=Math.max(1,Math.ceil(30/slot));let prev=-99;
+   sv.forEach((v,i)=>{
+    if(i===mi)return;
+    if(!(i%stp===0||(i===n-1&&i-prev>=stp)))return;
+    const lw=(i>0&&v<sv[i-1])&&(i<n-1&&v<sv[i+1]);
+    s+=`<text class="vl${v<0?' neg':''}" x="${x(i)}" y="${y(v)+(lw?16:-8)}" text-anchor="middle">${nf0.format(Math.round(v))}</text>`;prev=i});}
+  s+=`<circle class="ptm" cx="${mx}" cy="${my}" r="4.5"/><text class="lab halo" x="${tx}" y="${Math.min(my+19,b1+14)}" text-anchor="middle">mín. ${nf0.format(sv[mi])}</text>`;
+  s+=`<circle class="pt" cx="${x(n-1)}" cy="${y(sv[n-1])}" r="3.5"/>`;
+  s+=`<text class="lab" x="${ml}" y="${t2-14}">Variação líquida no mês · R$ mil</text>`;
+  tk2.forEach(v=>{s+=`<line class="gl" x1="${ml}" x2="${W-mr}" y1="${y2(v)}" y2="${y2(v)}"/><text x="${ml-6}" y="${y2(v)+4}" text-anchor="end">${nf0.format(v)}</text>`});
+  nv.forEach((v,i)=>{const yy=y2(Math.max(v,0)), hh=Math.max(1,Math.abs(y2(v)-y2(0)));s+=`<rect class="${v>=0?'bpos':'bneg'}" x="${x(i)-bw/2}" y="${yy}" width="${bw}" height="${hh}" rx="1"/>`});
+  s+=xLabels(W,ml,iw,b2+20,r.rows);
+  r.rows.forEach((q,i)=>{s+=`<rect class="hit" data-i="${i}" x="${x(i)-iw/(2*n)}" y="0" width="${iw/n}" height="${H}"/>`});
+  return s+'</svg>';
+}
+function setReadout(i){
+  const r=RES; if(!r)return; const q=r.rows[i];
+  const sg=v=>(v>=0?'+':'−')+money(Math.abs(v)).replace('−','');
+  document.getElementById('ro').textContent=`${lab(q)} · saldo ${money(q.fim)} · variação ${sg(q.net)} · fluxo operacional ${sg(q.fco)}`;
+}
+function chartWf(W,r){
+  const H=244,ml=46,mr=12,t=34,b=196,iw=W-ml-mr,R=r.rows,T=r.T;
+  const steps=[{k:['Saldo','inicial'],v:R[0].ini,tot:1},{k:['Fluxo','operacional'],v:T.fco},{k:['Capex'],v:T.fci},{k:['Dívida','e lucros'],v:T.fcf},{k:['Saldo','final'],v:R[R.length-1].fim,tot:1}];
+  let run=0;
+  steps.forEach(st=>{if(st.tot){st.a=0;st.b=st.v;run=st.v}else{st.a=run;st.b=run+st.v;run=st.b}});
+  const vals=steps.flatMap(s=>[s.a/1000,s.b/1000]);
+  const tk=niceTicks(Math.min(0,...vals),Math.max(...vals),4), lo=tk[0], hi=tk[tk.length-1];
+  const y=v=>b-(v-lo)/(hi-lo)*(b-t);
+  const band=iw/5, bw=Math.min(64,band*.6);
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Composição da variação de caixa no período">`;
+  s+=`<text class="lab" x="${ml}" y="12">R$ mil</text>`;
+  tk.forEach(v=>{s+=`<line class="gl" x1="${ml}" x2="${W-mr}" y1="${y(v)}" y2="${y(v)}"/><text x="${ml-6}" y="${y(v)+4}" text-anchor="end">${nf0.format(v)}</text>`});
+  if(lo<0)s+=`<line class="zl" x1="${ml}" x2="${W-mr}" y1="${y(0)}" y2="${y(0)}"/>`;
+  steps.forEach((st,k)=>{
+    const cx=ml+(k+.5)*band, ya=y(st.a/1000), yb=y(st.b/1000), top=Math.min(ya,yb), hh=Math.max(1,Math.abs(ya-yb));
+    const cls=st.tot?'btot':st.v>=0?'bpos':'bneg';
+    s+=`<rect class="${cls}" x="${cx-bw/2}" y="${top}" width="${bw}" height="${hh}" rx="2"/>`;
+    const txt=(!st.tot&&st.v>0?'+':'')+nf0.format(Math.round(st.v/1000)+0);
+    s+=`<text class="lab" x="${cx}" y="${top-6}" text-anchor="middle">${txt}</text>`;
+    if(k<steps.length-1){s+=`<line class="gl" x1="${cx+bw/2}" x2="${cx+band-bw/2}" y1="${yb}" y2="${yb}"/>`}
+    st.k.forEach((line,j)=>{s+=`<text x="${cx}" y="${b+18+j*13}" text-anchor="middle">${line}</text>`});
+  });
+  return s+'</svg>';
+}
+function chartSc(W,all,active){
+  const H=262,ml=46,mr=W<520?76:90,t=22,b=222,iw=W-ml-mr;
+  const n=all.base.rows.length, x=i=>ml+(i+.5)*iw/n, keys=['pess','base','otim'];
+  const all12=keys.flatMap(k=>all[k].rows.map(q=>q.fim/1000));
+  const tk=niceTicks(Math.min(0,...all12),Math.max(...all12),4), lo=tk[0], hi=tk[tk.length-1];
+  const y=v=>b-(v-lo)/(hi-lo)*(b-t);
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Saldo de caixa nos três cenários">`;
+  s+=`<text class="lab" x="${ml}" y="12">Saldo de caixa · R$ mil</text>`;
+  tk.forEach(v=>{s+=`<line class="gl" x1="${ml}" x2="${W-mr}" y1="${y(v)}" y2="${y(v)}"/><text x="${ml-6}" y="${y(v)+4}" text-anchor="end">${nf0.format(v)}</text>`});
+  if(lo<0)s+=`<line class="zl" x1="${ml}" x2="${W-mr}" y1="${y(0)}" y2="${y(0)}"/>`;
+  const ends=[];
+  keys.forEach(k=>{
+    const pts=all[k].rows.map((q,i)=>`${x(i)},${y(q.fim/1000)}`).join(' ');
+    s+=`<polyline class="ln s-${k}" style="stroke-width:${k===active?3:1.6};opacity:${k===active?1:.75}" points="${pts}"/>`;
+    ends.push({k,y:y(all[k].rows[n-1].fim/1000)});
+  });
+  ends.sort((a,b2)=>a.y-b2.y);
+  for(let i=1;i<ends.length;i++){if(ends[i].y-ends[i-1].y<14)ends[i].y=ends[i-1].y+14}
+  ends.forEach(e=>{s+=`<text class="t-${e.k}" x="${x(n-1)+8}" y="${e.y+4}" style="font-weight:${e.k===active?600:400}">${SCEN[e.k].nome}</text>`});
+  s+=xLabels(W,ml,iw,b+20,all.base.rows);
+  return s+'</svg>';
+}
+function drawInto(id,fn){
+  const el=document.getElementById(id); if(!el||el.offsetParent===null)return null;
+  const W=Math.max(300,Math.floor(el.clientWidth)||600);
+  el.innerHTML=fn(W); return el;
+}
+function renderCharts(){
+  if(!RES)return;
+  if(TAB==='resumo'){
+    const el=drawInto('c-cash',W=>chartCash(W,RES));
+    if(el){
+      const svg=el.querySelector('svg');
+      const on=e=>{const h=e.target.dataset&&e.target.dataset.i;if(h!=null){hoverI=+h;setReadout(hoverI)}};
+      svg.addEventListener('pointermove',on); svg.addEventListener('click',on);
+      setReadout(hoverI==null?RES.m.minI:hoverI);
+    }
+    drawInto('c-wf',W=>chartWf(W,RES));
+  }
+  if(TAB==='cen')drawInto('c-sc',W=>chartSc(W,ALL,SC));
+}
+let rz=0;
+window.addEventListener('resize',()=>{cancelAnimationFrame(rz);rz=requestAnimationFrame(renderCharts)});
+
+/* ---------- sensibilidade ---------- */
+let SENSM='min';
+function sensData(mode){
+  const drs=[-10,-5,0,5,10], dcs=[-2,-1,0,1,2];
+  return {
+    rowH:`Recebimento ↓ · ${P.tipo===1?'Custo dos serviços':'CMV'} →`,
+    cols:dcs.map(dc=>nf1.format(P.cmv+dc)+'%'),
+    rows:drs.map(dr=>{const pr=Math.max(0,P.pmr+dr);
+      return {l:nf0.format(pr)+' dias',base:dr===0,v:dcs.map(dc=>{const r=compute({...P,pmr:pr,cmv:P.cmv+dc},SC);return mode==='min'?r.m.minV:r.T.fim})}})
+  };
+}
+function renderSens(){
+  const el=document.getElementById('sens-table'); if(!el)return;
+  const d=sensData(SENSM);
+  let h=`<table><thead><tr><th>${d.rowH}</th>${d.cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>`;
+  d.rows.forEach(r=>{h+=`<tr><td>${r.l}</td>`+r.v.map((v,j)=>`<td class="${v<0?'sneg':''}${r.base&&j===2?' sc0':''}">${cell(v)}</td>`).join('')+'</tr>'});
+  el.innerHTML=h+'</tbody></table>';
+}
+document.getElementById('sens-m').addEventListener('change',e=>{SENSM=e.target.value;renderSens()});
+
+/* ---------- cenários ---------- */
+function signed(v,u){return (v>0?'+':v<0?'−':'')+nf1.format(Math.abs(v))+u}
+function scenNotesData(){
+  return Object.keys(SCEN).map(k=>{const s=SCEN[k];
+    const txt=k==='base'?'Premissas exatamente como estão no painel.':`Crescimento ${signed(s.gD,' p.p./mês')}, ${P.tipo===1?'custo dos serviços':'CMV'} ${signed(s.cmvD,' p.p.')}, recebimento ${s.pmrD>0?'+':s.pmrD<0?'−':''}${Math.abs(s.pmrD)} dias, despesas fixas ${signed((s.fixF-1)*100,'%')}.`;
+    return {n:s.nome,t:txt}});
+}
+function scenNotes(){return scenNotesData().map(c=>`<div><b>${c.n}</b>${c.t}</div>`).join('')}
+/* indicadores da tabela de cenários (usados na tela e no relatório) */
+const SCDEFS=[
+   ['Receita bruta no período',r=>money(r.T.rb)],
+   ['EBITDA no período',r=>money(r.T.ebitda)],
+   ['Margem EBITDA',r=>pct(r.T.ebitda/r.T.rl)],
+   ['Lucro líquido',r=>money(r.T.ll)],
+   ['Fluxo operacional',r=>money(r.T.fco)],
+   ['Saldo final de caixa',r=>money(r.T.fim)],
+   ['Menor saldo de caixa',r=>money(r.m.minV)+' ('+lab(r.rows[r.m.minI])+')'],
+   ['Meses com caixa negativo',r=>String(r.m.negMonths)],
+   ['Dívida líquida ÷ EBITDA',r=>r.T.ebitda>0?xx((r.rows[r.rows.length-1].debt-r.T.fim)/r.T.ebitda):'n/d'],
+   ['Valor da empresa (DCF)',r=>money(r.m.ev)]
+];
+function scenTable(){
+  const keys=['pess','base','otim'];
+  const defs=SCDEFS;
+
+  let h=`<table><thead><tr><th>Indicador</th>${keys.map(k=>`<th class="${k===SC?'act':''}">${SCEN[k].nome}</th>`).join('')}</tr></thead><tbody>`;
+  defs.forEach(([n,f])=>{h+=`<tr><td>${n}</td>${keys.map(k=>`<td class="${k===SC?'act':''}">${f(ALL[k])}</td>`).join('')}</tr>`});
+  return h+'</tbody></table>';
+}
+
+/* ---------- render ---------- */
+function kpiData(r){
+  const T=r.T,m=r.m,q=r.rows[m.minI];
+  const dlt=T.fim-T.ini, conv=T.ebitda>0?T.fco/T.ebitda:null;
+  const kp=[
+   ['Saldo final de caixa',money(T.fim),(dlt>=0?'+':'−')+money(Math.abs(dlt)).replace('−','')+' no período',T.fim<0],
+   ['Menor saldo',money(m.minV),'em '+lab(q),m.minV<0],
+   ['Fluxo operacional',money(T.fco),'Conversão de caixa '+pct(conv),T.fco<0],
+   ['EBITDA no período',money(T.ebitda),'Margem '+pct(T.rl>0?T.ebitda/T.rl:null),T.ebitda<0],
+   ['Valor da empresa (DCF)',money(m.ev),'Patrimônio '+money(m.eq),m.ev!=null&&m.ev<0]
+  ];
+  return kp;
+}
+function update(){
+  ALL={base:compute(P,'base'),otim:compute(P,'otim'),pess:compute(P,'pess')};
+  RES=ALL[SC];
+  const r=RES,T=r.T,m=r.m,L=r.rows[r.rows.length-1];
+  const q=r.rows[m.minI];
+  renderPresetNote();
+  document.getElementById('emp').textContent=empNome();
+  document.getElementById('subpre').textContent=temNome()?'Simulação de fluxo de caixa da':'Modelo educacional com dados fictícios da';
+  document.getElementById('tag').textContent=temNome()?'Simulação':'Dados fictícios';
+  {const a0=r.rows[0],a1=r.rows[r.rows.length-1];document.getElementById('per').textContent=`horizonte de ${r.rows.length} meses, de ${MESES_L[a0.mi].toLowerCase()} de ${a0.yr} a ${MESES_L[a1.mi].toLowerCase()} de ${a1.yr}`}
+  document.getElementById('alert').innerHTML=m.negMonths>0
+    ?`<div class="alert bad"><b>Caixa negativo em ${m.negMonths} ${m.negMonths===1?'mês':'meses'}.</b> O menor saldo é ${money(m.minV)} em ${lab(q)}. Reduza o prazo de recebimento, alongue o pagamento a fornecedores ou aumente o caixa inicial.</div>`
+    :`<div class="alert ok"><b>Caixa positivo nos ${r.rows.length} meses.</b> O menor saldo é ${money(m.minV)} em ${lab(q)}.</div>`;
+  const kp=[...kpiData(r),['Lucro líquido',money(T.ll),'Margem '+pct(T.rl>0?T.ll/T.rl:null),T.ll<0]];
+  document.getElementById('kpis').innerHTML=kp.map(([l,v,n,neg])=>`<div class="kpi"><div class="l">${l}</div><div class="v${neg?' neg':''}">${v}</div><div class="n">${n}</div></div>`).join('');
+  const out=T.fci+T.fcf;
+  document.getElementById('lead').textContent=`No cenário ${SCEN[SC].nome}, o caixa vai de ${money(T.ini)} para ${money(T.fim)}. A operação gera ${money(T.fco)} já descontado o capital de giro; investimentos, amortização da dívida e distribuição de lucros somam ${money(out)}.`;
+  document.getElementById('table').innerHTML=buildTable(r);
+  document.getElementById('p-idx').innerHTML=buildIdx(r,P);
+  document.getElementById('scen-notes').innerHTML=scenNotes();
+  document.getElementById('scen-table').innerHTML=scenTable();
+  renderCharts();
+  renderSens();
+  updateMail();
+}
+/* ---------- resumo por e-mail ---------- */
+function summaryText(){
+  const r=RES,T=r.T,m=r.m,q=r.rows[m.minI],last=r.rows[r.rows.length-1];
+  const liq=m.pc>0?m.ac/m.pc:null;
+  const L=[
+   (temNome()?'Simulação de Fluxo de Caixa - '+empNome():'Simulador de Fluxo de Caixa (dados fictícios)')+' - Cenário '+SCEN[SC].nome,
+   'Período: '+lab(r.rows[0])+' a '+lab(last)+' ('+r.rows.length+' meses)',
+   '',
+   'Saldo inicial de caixa: '+money(T.ini),
+   'Saldo final de caixa: '+money(T.fim),
+   'Menor saldo: '+money(m.minV)+' em '+lab(q)+(m.negMonths>0?' (caixa negativo em '+m.negMonths+' meses)':''),
+   'Fluxo operacional: '+money(T.fco),
+   'EBITDA: '+money(T.ebitda)+' (margem '+pct(T.rl>0?T.ebitda/T.rl:null)+')',
+   'Lucro líquido: '+money(T.ll),
+   'Liquidez corrente: '+xx(liq),
+   'Valor da empresa (DCF): '+money(m.ev),
+   '',
+   temNome()?'Simulação baseada nas premissas informadas; os resultados reais podem diferir. Não constitui auditoria, parecer contábil nem recomendação financeira.':'Modelo educacional, sem valor de recomendação financeira.'
+  ].concat(prepTxt()?['',prepTxt()]:[]);
+  return L.join('\n');
+}
+function updateMail(){
+  const subj='Simulação de fluxo de caixa'+(temNome()?' - '+empNome():'')+' - cenário '+SCEN[SC].nome;
+  const body=summaryText().replace(/\n/g,'\r\n');
+  const q=encodeURIComponent(subj),bd=encodeURIComponent(body);
+  const $=id=>document.getElementById(id);
+  $('m-app').href='mailto:?subject='+q+'&body='+bd;
+  $('m-gmail').href='https://mail.google.com/mail/?view=cm&fs=1&su='+q+'&body='+bd;
+  $('m-outlook').href='https://outlook.live.com/mail/0/deeplink/compose?subject='+q+'&body='+bd;
+  $('m-o365').href='https://outlook.office.com/mail/deeplink/compose?subject='+q+'&body='+bd;
+}
+/* ---- resumo formatado (HTML) para colar no corpo do e-mail ---- */
+const CF='Arial, Helvetica, sans-serif';
+function emCanvas(w,h){const c=document.createElement('canvas');c.width=w*2;c.height=h*2;const g=c.getContext('2d');g.scale(2,2);g.fillStyle='#ffffff';g.fillRect(0,0,w,h);g.lineJoin='round';g.lineCap='round';return [c,g]}
+function emAxisY(g,tk,Y,x0,x1){g.strokeStyle=RK.line;g.lineWidth=1;g.fillStyle=RK.muted;g.font='10px '+CF;g.textAlign='right';tk.forEach(v=>{const y=Math.round(Y(v))+.5;g.beginPath();g.moveTo(x0,y);g.lineTo(x1,y);g.stroke();g.fillText(nf0.format(v),x0-6,y+3.5)})}
+function emAxisX(g,rows,x0,iw,y){const slot=iw/rows.length,step=Math.max(1,Math.ceil(46/slot));let last=null;g.fillStyle=RK.muted;g.font='10px '+CF;g.textAlign='center';rows.forEach((q,i)=>{if(i%step===0){g.fillText(MESES[q.mi]+(q.yr!==last?'/'+String(q.yr).slice(2):''),x0+(i+.5)*slot,y);last=q.yr}})}
+function emTitle(g,t){g.fillStyle=RK.muted;g.font='11px '+CF;g.textAlign='left';g.fillText(t,0,12)}
+function emCash(d){
+  const W=584,H=258,rows=d.r.rows,n=rows.length,sv=rows.map(q=>q.fim/1000),m=d.r.m;
+  const [c,g]=emCanvas(W,H),l=46,r=14,t=28,b=H-36,iw=W-l-r,X=i=>l+(i+.5)*iw/n;
+  const tk=niceTicks(Math.min(0,...sv),Math.max(...sv),4),lo=tk[0],hi=tk[tk.length-1],Y=v=>b-(v-lo)/(hi-lo)*(b-t);
+  emTitle(g,'Saldo de caixa no fim de cada mês (R$ mil)');emAxisY(g,tk,Y,l,W-r);emAxisX(g,rows,l,iw,H-8);
+  const pts=sv.map((v,i)=>[X(i),Y(v)]),base=Y(lo<0?0:lo);
+  g.beginPath();g.moveTo(pts[0][0],base);pts.forEach(p=>g.lineTo(p[0],p[1]));g.lineTo(pts[n-1][0],base);g.closePath();g.fillStyle=RK.accBg;g.fill();
+  g.beginPath();pts.forEach((p,i)=>i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]));g.strokeStyle=RK.acc;g.lineWidth=2.4;g.stroke();
+  if(n<=24){g.fillStyle=RK.acc;pts.forEach(p=>{g.beginPath();g.arc(p[0],p[1],2.6,0,7);g.fill()})}
+  const mi=m.minI,stp=Math.max(1,Math.ceil(30/(iw/n))),fs=n>12?9:10;g.font=fs+'px '+CF;g.textAlign='center';
+  sv.forEach((v,i)=>{
+    if(i===mi||!(i%stp===0||i===n-1)||(i!==n-1&&n-1-i<stp*.8))return;
+    const lw=(i>0&&v<sv[i-1])&&(i<n-1&&v<sv[i+1]);g.fillStyle=v<0?RK.neg:RK.muted;g.fillText(nf0.format(Math.round(v)),pts[i][0],pts[i][1]+(lw?15:-8));
+  });
+  const mv=sv[mi],low=pts[mi][1]>(t+b)/2,tx0=Math.min(Math.max(pts[mi][0],l+30),W-r-30);
+  g.fillStyle='#ffffff';g.strokeStyle=mv<0?RK.neg:RK.warn;g.lineWidth=2;g.beginPath();g.arc(pts[mi][0],pts[mi][1],5,0,7);g.fill();g.stroke();
+  g.font='bold 11px '+CF;g.fillStyle=mv<0?RK.neg:RK.warn;g.fillText('mín. '+nf0.format(Math.round(mv)),tx0,low?Math.min(pts[mi][1]+19,b+13):pts[mi][1]-11);
+  return c.toDataURL('image/png');
+}
+function emWf(d){
+  const W=584,H=240,st=wfSteps(d.r),[c,g]=emCanvas(W,H),l=46,r=14,t=30,b=H-46,iw=W-l-r,band=iw/5,bw=Math.min(58,band*.55);
+  const vals=st.flatMap(s=>[s.a/1000,s.b/1000]),tk=niceTicks(Math.min(0,...vals),Math.max(...vals),4),lo=tk[0],hi=tk[tk.length-1],Y=v=>b-(v-lo)/(hi-lo)*(b-t);
+  emTitle(g,'Do saldo inicial ao saldo final (R$ mil)');emAxisY(g,tk,Y,l,W-r);
+  st.forEach((s,k)=>{
+    const cx=l+(k+.5)*band,ya=Y(s.a/1000),yb=Y(s.b/1000),top=Math.min(ya,yb),hh=Math.max(1.5,Math.abs(ya-yb));
+    g.fillStyle=s.tot?RK.acc:s.v>=0?RK.pos:RK.neg;g.fillRect(cx-bw/2,top,bw,hh);
+    g.font='bold 11px '+CF;g.textAlign='center';g.fillStyle=s.v<0?RK.neg:RK.ink;g.fillText((!s.tot&&s.v>0?'+':'')+nf0.format(Math.round(s.v/1000)+0),cx,top-6);
+    if(k<st.length-1){g.strokeStyle=RK.muted;g.lineWidth=1;g.beginPath();g.moveTo(cx+bw/2,Math.round(yb)+.5);g.lineTo(cx+band-bw/2,Math.round(yb)+.5);g.stroke()}
+    g.font='10px '+CF;g.fillStyle=RK.muted;s.k.forEach((ln,j)=>g.fillText(ln,cx,b+17+j*12));
+  });
+  return c.toDataURL('image/png');
+}
+function emSc(d){
+  const W=584,H=262,keys=['pess','base','otim'],col={pess:RK.neg,base:RK.acc,otim:RK.pos},rows=d.r.rows,n=rows.length;
+  const [c,g]=emCanvas(W,H),l=46,r=104,t=28,b=H-36,iw=W-l-r,X=i=>l+(i+.5)*iw/n;
+  const all=keys.flatMap(k=>d.all[k].rows.map(q=>q.fim/1000)),tk=niceTicks(Math.min(0,...all),Math.max(...all),4),lo=tk[0],hi=tk[tk.length-1],Y=v=>b-(v-lo)/(hi-lo)*(b-t);
+  emTitle(g,'Saldo de caixa por cenário (R$ mil)');emAxisY(g,tk,Y,l,W-r);emAxisX(g,rows,l,iw,H-8);
+  const ends=[];
+  [...keys].sort((a,b2)=>(a===SC)-(b2===SC)).forEach(k=>{
+    g.beginPath();d.all[k].rows.forEach((q,i)=>i?g.lineTo(X(i),Y(q.fim/1000)):g.moveTo(X(i),Y(q.fim/1000)));g.strokeStyle=col[k];g.lineWidth=k===SC?2.8:1.6;g.stroke();
+  });
+  keys.forEach(k=>{const v=d.all[k].rows[n-1].fim/1000;ends.push({k,y:Y(v),v})});
+  ends.sort((p,q)=>p.y-q.y);for(let i=1;i<ends.length;i++)if(ends[i].y-ends[i-1].y<14)ends[i].y=ends[i-1].y+14;
+  g.textAlign='left';ends.forEach(e=>{g.font=(e.k===SC?'bold ':'')+'11px '+CF;g.fillStyle=col[e.k];g.fillText(SCEN[e.k].nome+' '+nf0.format(Math.round(e.v)),X(n-1)+8,e.y+4)});
+  return c.toDataURL('image/png');
+}
+function emailHtml(d){
+  const esc=x=>String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const neg=v=>/^\s*[−\-]\s*(R\$|\d)|^\s*\(\d/.test(String(v));
+  const R=d.r,T=R.T,kp=[...d.kpis,['Lucro líquido',money(T.ll),'Margem '+pct(T.rl>0?T.ll/T.rl:null),T.ll<0]];
+  const F='font-family:Arial,Helvetica,sans-serif;';
+  const kcell=([l,v,n,ng])=>`<td width="33%" valign="top" style="${F}background-color:#F1F5F6;border:4px solid #ffffff;padding:12px 12px 11px"><div style="${F}font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:${RK.muted}">${esc(l)}</div><div style="${F}font-size:20px;font-weight:bold;line-height:1.25;padding-top:4px;color:${ng?RK.neg:RK.ink}">${esc(v)}</div><div style="${F}font-size:11px;padding-top:2px;color:${neg(n)?RK.neg:RK.muted}">${esc(n)}</div></td>`;
+  const sec=t=>`<tr><td style="${F}padding:24px 28px 8px;font-size:15px;font-weight:bold;color:${RK.ink}">${t}</td></tr>`;
+  const img=(u,alt)=>`<tr><td style="padding:0 28px"><img src="${u}" width="584" alt="${esc(alt)}" style="display:block;width:100%;max-width:584px;height:auto;border:0"></td></tr>`;
+  const al=d.alertTxt.match(/^([^.]*\.)(.*)$/)||[0,d.alertTxt,''];
+  const bad=d.alertBad,ac=bad?RK.neg:RK.pos;
+  const th=(t,x)=>`<td align="${x||'right'}" style="${F}padding:7px 8px;font-size:11px;font-weight:bold;color:${RK.muted};background-color:#F1F5F6;border-bottom:1px solid ${RK.line}">${t}</td>`;
+  const srows=d.scVals.map(([nm,vs])=>`<tr><td style="${F}padding:7px 8px;font-size:12px;color:${RK.ink};border-bottom:1px solid ${RK.line}">${esc(nm)}</td>${vs.map((v,i)=>`<td align="right" style="${F}padding:7px 8px;font-size:12px;white-space:nowrap;color:${neg(v)?RK.neg:RK.ink};${i===1?'font-weight:bold;background-color:'+RK.accBg+';':''}border-bottom:1px solid ${RK.line}">${esc(v)}</td>`).join('')}</tr>`).join('');
+  const k1=kp.slice(0,3).map(kcell).join(''),k2=kp.slice(3,6).map(kcell).join('');
+  return `<div style="background-color:#ffffff"><table role="presentation" width="640" cellpadding="0" cellspacing="0" border="0" style="width:640px;max-width:100%;background-color:#ffffff;border:1px solid ${RK.line};${F}color:${RK.ink}">
+<tr><td height="6" style="height:6px;line-height:6px;font-size:1px;background-color:${RK.acc}">&nbsp;</td></tr>
+${d.logo?`<tr><td align="right" style="padding:14px 28px 0"><img src="${d.logo.data}" height="${Math.min(44,Math.round(150*d.logo.h/d.logo.w))}" alt="${esc(d.cons||'Logotipo')}" style="display:inline-block;height:${Math.min(44,Math.round(150*d.logo.h/d.logo.w))}px;width:auto;max-width:150px;border:0"></td></tr>`:''}
+<tr><td style="${F}padding:22px 28px 4px;font-size:11px;font-weight:bold;letter-spacing:1.2px;color:${RK.acc}">${esc(d.selo)}</td></tr>
+<tr><td style="${F}padding:0 28px;font-size:24px;font-weight:bold;color:${RK.ink}">Resumo da simulação de fluxo de caixa</td></tr>
+<tr><td style="${F}padding:8px 28px 0;font-size:16px;color:${RK.ink}">${esc(d.emp)}</td></tr>
+<tr><td style="${F}padding:3px 28px 16px;font-size:13px;color:${RK.muted}">Cenário ${esc(d.cen)} &middot; ${esc(d.per)} (${d.n} meses)</td></tr>
+<tr><td style="padding:0 28px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td width="4" style="width:4px;background-color:${ac}">&nbsp;</td><td style="${F}padding:11px 14px;font-size:13px;line-height:1.45;color:${ac};background-color:${bad?RK.negBg:RK.posBg}"><b>${esc(al[1])}</b>${esc(al[2])}</td></tr></table></td></tr>
+<tr><td style="padding:14px 24px 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>${k1}</tr><tr>${k2}</tr></table></td></tr>
+<tr><td style="${F}padding:14px 28px 0;font-size:13px;line-height:1.55;color:${RK.ink}">${esc(d.lead)}</td></tr>
+${sec('Saldo de caixa mês a mês')}${img(emCash(d),'Gráfico do saldo de caixa mês a mês')}
+${sec('Do saldo inicial ao final')}${img(emWf(d),'Gráfico da variação do caixa por componente')}
+${sec('Comparação de cenários')}${img(emSc(d),'Gráfico do saldo de caixa por cenário')}
+<tr><td style="padding:14px 28px 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse"><tr>${th('Indicador','left')}${th('Pessimista')}${th('<span style="color:'+RK.acc+'">Base</span>')}${th('Otimista')}</tr>${srows}</table></td></tr>
+<tr><td style="${F}padding:20px 28px 22px;font-size:11px;line-height:1.5;color:${RK.muted}">${d.prep?`<b style="color:${RK.ink}">${esc(d.prep)}</b><br>`:''}${esc(d.aviso)}<br>Valores em R$ (mil = milhares, mi = milhões). Gerado em ${esc(d.data)}.</td></tr>
+</table></div>`;
+}
+document.getElementById('copy').addEventListener('click',async()=>{
+  const msg=document.getElementById('mailmsg'),btn=document.getElementById('copy');
+  btn.disabled=true;msg.textContent='Preparando o resumo com gráficos…';
+  let html,text;
+  try{const d=reportDataNow();html=emailHtml(d);text=summaryText()}catch(e){msg.textContent='Não foi possível montar o resumo.';try{console.error(e)}catch(_){}btn.disabled=false;return}
+  const ok='Resumo formatado copiado, com gráficos. Cole no corpo da mensagem do e-mail (Ctrl+V).';
+  const viaSelection=()=>{
+    const box=document.createElement('div');box.contentEditable='true';box.setAttribute('aria-hidden','true');box.style.cssText='position:fixed;left:-10000px;top:0;width:700px;background:#fff';box.innerHTML=html;document.body.appendChild(box);
+    const rg=document.createRange();rg.selectNodeContents(box);const sl=window.getSelection();sl.removeAllRanges();sl.addRange(rg);
+    let done=false;try{done=document.execCommand('copy')}catch(e){}
+    sl.removeAllRanges();box.remove();return done;
+  };
+  try{
+    if(window.ClipboardItem&&navigator.clipboard&&navigator.clipboard.write){
+      await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'}),'text/plain':new Blob([text],{type:'text/plain'})})]);
+      msg.textContent=ok;
+    }else throw new Error('sem ClipboardItem');
+  }catch(e){
+    if(viaSelection())msg.textContent=ok;
+    else{
+      try{await navigator.clipboard.writeText(text);msg.textContent='Só foi possível copiar o texto simples, sem gráficos. Para enviar com gráficos, exporte em PDF e anexe ao e-mail.'}
+      catch(e2){msg.textContent='Não foi possível copiar automaticamente. Exporte em PDF e anexe ao e-mail.'}
+    }
+  }
+  btn.disabled=false;
+});
+/* ---- identidade do relatório e arquivo de projeto ---- */
+const idCons=document.getElementById('id-cons'),idCont=document.getElementById('id-cont'),idLogo=document.getElementById('id-logo'),logoPrev=document.getElementById('logo-prev'),logoRm=document.getElementById('logo-rm'),idNote=document.getElementById('id-note'),idBox=document.getElementById('idbox');
+const ID_NOTE0=idNote.textContent;
+function syncID(){
+  idCons.value=ID.consultor;idCont.value=ID.contato;
+  if(LOGO){logoPrev.src=LOGO.data;logoPrev.hidden=false;logoRm.hidden=false}else{logoPrev.removeAttribute('src');logoPrev.hidden=true;logoRm.hidden=true}
+  if(ID.consultor||ID.contato||LOGO)idBox.open=true;
+}
+idCons.addEventListener('input',()=>{ID.consultor=cleanTxt(idCons.value,60);saveID()});
+idCont.addEventListener('input',()=>{ID.contato=cleanTxt(idCont.value,80);saveID()});
+function readLogo(file){
+  return new Promise((res,rej)=>{
+    if(!file||!/^image\/(png|jpeg|webp)$/.test(file.type))return rej(new Error('tipo'));
+    if(file.size>3*1024*1024)return rej(new Error('tam'));
+    const fr=new FileReader();fr.onerror=()=>rej(new Error('leitura'));
+    fr.onload=()=>{const im=new Image();im.onerror=()=>rej(new Error('leitura'));
+      im.onload=()=>{const k=Math.min(1,480/im.width,200/im.height),w=Math.max(1,Math.round(im.width*k)),h=Math.max(1,Math.round(im.height*k));
+        const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(im,0,0,w,h);
+        const data=c.toDataURL('image/png');res({data,w,h})};
+      im.src=fr.result};
+    fr.readAsDataURL(file);
+  });
+}
+idLogo.addEventListener('change',async e=>{
+  const f=e.target.files&&e.target.files[0];if(!f)return;
+  try{const l=await readLogo(f);if(!logoOk(l))throw new Error('leitura');LOGO=l;saveID();syncID();idNote.textContent='Logotipo carregado.'}
+  catch(err){idNote.textContent=err&&err.message==='tipo'?'Use uma imagem PNG, JPG ou WebP.':err&&err.message==='tam'?'A imagem é grande demais (limite de 3 MB).':'Não foi possível ler a imagem.'}
+  idLogo.value='';
+});
+logoRm.addEventListener('click',()=>{LOGO=null;saveID();syncID();idNote.textContent=ID_NOTE0});
+
+const PROJ_APP='simulador-fluxo-de-caixa';
+function projectJson(){
+  return JSON.stringify({app:PROJ_APP,versao:1,salvoEm:new Date().toISOString(),cenario:SC,premissas:P,identidade:{consultor:ID.consultor,contato:ID.contato,logo:LOGO}},null,1);
+}
+function projectFile(){
+  const sl=temNome()?empNome().normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,30):'simulacao';
+  const d=new Date(),z=n=>String(n).padStart(2,'0');
+  return `projeto-fluxo-caixa-${sl||'simulacao'}-${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}.json`;
+}
+document.getElementById('projsave').addEventListener('click',async()=>{
+  if(!DL){fnote.textContent='Não foi possível salvar o projeto neste navegador.';return}
+  try{await DL.save({filename:projectFile(),data:projectJson()});fnote.textContent='Projeto salvo. Use Abrir projeto para retomar a simulação.'}
+  catch(err){fnote.textContent=err&&err.code==='declined'?'Download cancelado.':'Não foi possível salvar o projeto.'}
+});
+function parseProject(text){
+  let o;try{o=JSON.parse(text)}catch(e){return {err:'O arquivo não é um projeto válido (JSON ilegível).'}}
+  if(!o||o.app!==PROJ_APP||!o.premissas||typeof o.premissas!=='object')return {err:'Este arquivo não é um projeto deste simulador.'};
+  if(o.versao!==1)return {err:'Versão de projeto não reconhecida.'};
+  const src=o.premissas,tipo=(src.tipo===1?1:0),out=defaultsFor(tipo),ign=[];
+  SPEC.forEach(sp=>{
+    if(!(sp.id in src)||sp.id==='tipo')return;
+    const v=src[sp.id];let ok=false,nv=v;
+    if(sp.t==='chk')ok=typeof v==='boolean';
+    else if(sp.t==='sel')ok=sp.opts.some(x=>x[0]===v);
+    else if(sp.t==='rng'){ok=typeof v==='number'&&isFinite(v)&&v>=sp.min&&v<=sp.max;if(ok){const dec=(String(sp.step).split('.')[1]||'').length;nv=+v.toFixed(dec)}}
+    else if(sp.t==='num'){ok=typeof v==='number'&&isFinite(v)&&v>=0&&v<=999999999999;if(ok)nv=Math.round(v)}
+    else if(sp.t==='txt'){ok=typeof v==='string';if(ok)nv=cleanTxt(v,60)}
+    if(ok)out[sp.id]=nv;else ign.push(sp.campo);
+  });
+  const idn=o.identidade&&typeof o.identidade==='object'?o.identidade:{};
+  return {P:out,SC:SCEN[o.cenario]?o.cenario:'base',ID:{consultor:cleanTxt(idn.consultor,60),contato:cleanTxt(idn.contato,80)},logo:logoOk(idn.logo)?idn.logo:null,ign};
+}
+document.getElementById('projopen').addEventListener('click',()=>{const i=document.getElementById('projfile');i.value='';i.click()});
+document.getElementById('projfile').addEventListener('change',async e=>{
+  const f=e.target.files&&e.target.files[0];if(!f)return;
+  if(f.size>3*1024*1024){showRep('err','Arquivo grande demais.',['O limite é 3 MB.']);return}
+  let text;try{text=await f.text()}catch(err){showRep('err','Não foi possível ler o arquivo.',[]);return}
+  const r=parseProject(text);
+  if(r.err){showRep('err',r.err,[]);fnote.textContent='Não foi possível abrir o projeto.';return}
+  clearTimeout(burst);burst=0;
+  P=r.P;SC=r.SC;PRESET=null;ID=r.ID;LOGO=r.logo;saveID();
+  buildFields();buildSeg();renderPresets();syncID();persist(true);update();
+  fnote.textContent='Último projeto aberto: '+shown(f.name||'projeto')+'.';
+  showRep('ok','Projeto aberto: '+shown(f.name||'projeto')+'. Use Desfazer para reverter as premissas.',r.ign.length?['Não aplicado por valor inválido: '+r.ign.slice(0,5).join(', ')+(r.ign.length>5?' e mais '+(r.ign.length-5):'')+'.']:[]);
+});
+syncID();
+
+(function(){
+  const w=document.getElementById('mailw'),b=document.getElementById('mailbtn'),m=document.getElementById('mailmenu');
+  const set=o=>{m.hidden=!o;b.setAttribute('aria-expanded',String(o))};
+  b.addEventListener('click',()=>set(m.hidden));
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!m.hidden){set(false);b.focus()}});
+  document.addEventListener('click',e=>{if(!w.contains(e.target))set(false)});
+  m.addEventListener('click',e=>{if(e.target.closest('a'))set(false)});
+})();
+document.getElementById('mailmenu').addEventListener('click',e=>{
+  if(!e.target.closest('a'))return;
+  document.getElementById('mailmsg').textContent='Se o seu programa de e-mail não abriu, use Copiar resumo e cole na mensagem. O texto enviado por este botão é simples, sem gráficos.';
+});
+
+/* ---------- exemplos prontos ---------- */
+const AUTOR='Carlo Esposito';
+const temNome=()=>String(P.nome||'').trim().length>0;
+const empNome=()=>temNome()?String(P.nome).trim():(P.tipo===1?'Horizonte Serviços Empresariais':'Vale Verde Distribuidora');
+const cleanNome=v=>String(v==null?'':v).replace(/[\u0000-\u001f\u007f]/g,' ').replace(/\s+/g,' ').trim().replace(/^'(?=[=+\-@])/,'').slice(0,60);
+document.getElementById('by').textContent='Desenvolvido por '+AUTOR;
+function defaultsFor(t){return t===1?{...DEFAULTS,...DEF_S,tipo:1}:{...DEFAULTS,tipo:0}}
+const PRESETS=[
+  {id:'estoque',t:[0],n:'Ampliar estoque',ch:D=>({pme:D.pme+20,cresc:+(D.cresc+0.6).toFixed(1)}),d:D=>`Estoque sobe de ${D.pme} para ${D.pme+20} dias de CMV para sustentar vendas que crescem ${nf1.format(D.cresc+0.6)}% ao mês.`},
+  {id:'equipe',t:[1],n:'Ampliar a equipe',ch:D=>({fixas:Math.round(D.fixas*1.15),cresc:+(D.cresc+0.8).toFixed(1)}),d:D=>`Despesas fixas sobem 15% (para R$ ${nf0.format(Math.round(D.fixas*1.15))} por mês) e a receita passa a crescer ${nf1.format(D.cresc+0.8)}% ao mês.`},
+  {id:'pagto',t:[0,1],n:'Alongar pagamento',ch:D=>({pmp:D.pmp+15}),d:D=>`Negociação com fornecedores leva o prazo de pagamento de ${D.pmp} para ${D.pmp+15} dias.`},
+  {id:'receb',t:[0,1],n:'Encurtar recebimento',ch:D=>({pmr:D.pmr-10}),d:D=>`Política de crédito ou de faturamento mais curta reduz o prazo de recebimento de ${D.pmr} para ${D.pmr-10} dias.`},
+  {id:'divida',t:[0,1],n:'Renegociar a dívida',ch:D=>({d1T:+(D.d1T-0.4).toFixed(1),d1N:D.d1N+12}),d:D=>`A dívida 1 é renegociada: juros caem de ${nf1.format(D.d1T)}% para ${nf1.format(D.d1T-0.4)}% ao mês e o prazo sobe de ${D.d1N} para ${D.d1N+12} meses.`},
+  {id:'capex',t:[0,1],n:'Expansão com capex',ch:D=>({capex:D.capex+25000,cresc:+(D.cresc+0.6).toFixed(1)}),d:D=>`Investimento mensal sobe para R$ ${nf0.format(D.capex+25000)} e a receita passa a crescer ${nf1.format(D.cresc+0.6)}% ao mês. Crescer também consome capital de giro.`}
+];
+let PRESET=null;
+function renderPresets(){
+  document.getElementById('presets').innerHTML='<span class="pl">Experimente</span>'+PRESETS.filter(x=>x.t.includes(P.tipo)).map(x=>`<button type="button" data-p="${x.id}" aria-pressed="${PRESET===x.id}">${x.n}</button>`).join('')+(PRESET?'<button type="button" data-p="__orig">Voltar ao original</button>':'');
+}
+document.getElementById('presets').addEventListener('click',e=>{
+  const id=e.target.dataset.p; if(!id)return;
+  const keep={tipo:P.tipo,mesIni:P.mesIni,anoIni:P.anoIni,n:P.n,nome:P.nome}, D=defaultsFor(P.tipo);
+  if(id==='__orig'){PRESET=null;P={...D,...keep}}
+  else{const x=PRESETS.find(y=>y.id===id);PRESET=id;P={...D,...x.ch(D),...keep}}
+  buildFields();persist(true);renderPresets();update();
+});
+function renderPresetNote(){
+  const el=document.getElementById('pnote');
+  if(!PRESET){el.innerHTML='';return}
+  const x=PRESETS.find(y=>y.id===PRESET), D=defaultsFor(P.tipo), o=compute({...D,mesIni:P.mesIni,anoIni:P.anoIni,n:P.n},SC), c=RES;
+  const dl=c.T.fim-o.T.fim, sg=(dl>=0?'+':'−')+money(Math.abs(dl)).replace('−','');
+  el.innerHTML=`<div class="pnote"><b>${x.n}.</b> ${x.d(D)} Saldo final ${money(c.T.fim)} (${sg} frente às premissas originais) e menor saldo ${money(c.m.minV)}.</div>`;
+}
+const panel=document.getElementById('panel');
+const mq=window.matchMedia('(min-width: 980px)');
+const syncPanel=()=>{if(mq.matches)panel.open=true};
+mq.addEventListener?mq.addEventListener('change',syncPanel):mq.addListener(syncPanel);
+syncPanel();
+/* ---------- importar e baixar modelo (Excel e CSV) ---------- */
+const norm=v=>String(v==null?'':v).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+const UNIT={pm:'% ao mês',pct:'%',pct2:'%',dias:'dias',pa:'% ao ano',meses:'meses'};
+const ACC_TXT={nome:'Texto livre, até 60 caracteres (opcional)',tipo:'Comércio | Serviços',mesIni:'Janeiro a Dezembro (ou 1 a 12)',anoIni:'2026 a 2028',n:'6, 12, 18 ou 24 meses',regime:'Simples Nacional | Lucro Presumido | Lucro Real',d1Sys:'SAC | Tabela Price',d2Sys:'SAC | Tabela Price',sazon:'Sim | Não',d1On:'Sim | Não',d2On:'Sim | Não'};
+const EXTRA={impV:'Simples: alíquota efetiva; demais: ICMS, PIS e COFINS',iss:'só Serviços em Presumido ou Real',pc:'só Serviços em Presumido ou Real',ir:'só Lucro Real',pme:'não vale para Serviços'};
+const CAMPO={nome:'Nome da empresa',tipo:'Tipo de empresa',mesIni:'Mês inicial',anoIni:'Ano inicial',n:'Horizonte da projeção',receita:'Receita bruta mensal de partida',cresc:'Crescimento mensal da receita',sazon:'Aplicar sazonalidade',cmv:'CMV ou custo dos serviços (% da receita líquida)',fixas:'Despesas fixas mensais',infl:'Reajuste mensal das despesas fixas',despVar:'Despesas variáveis (% da receita)',inad:'Inadimplência (% da receita bruta)',dep:'Depreciação mensal',regime:'Regime tributário',impV:'Impostos sobre vendas (alíquota efetiva)',iss:'ISS (alíquota do município)',pc:'PIS e COFINS (alíquota efetiva)',ir:'IR e CSLL sobre o lucro (Lucro Real)',pmr:'Prazo médio de recebimento',pme:'Prazo médio de estoque',pmp:'Prazo médio de pagamento',capex:'Investimento mensal (capex)',imob:'Imobilizado líquido inicial',d1On:'Dívida 1: possui',d1S:'Dívida 1: saldo devedor',d1T:'Dívida 1: juros',d1N:'Dívida 1: prazo restante',d1Sys:'Dívida 1: sistema de amortização',d2On:'Dívida 2: possui',d2S:'Dívida 2: saldo devedor',d2T:'Dívida 2: juros',d2N:'Dívida 2: prazo restante',d2Sys:'Dívida 2: sistema de amortização',caixa:'Saldo de caixa inicial',dist:'Distribuição de lucros',wacc:'Taxa de desconto (WACC)',g:'Crescimento na perpetuidade'};
+const SPEC=[];
+FIELDS.forEach(grp=>grp.items.forEach(f=>SPEC.push({id:f.id,g:grp.g,campo:CAMPO[f.id]||f.id,t:f.t,min:f.min,max:f.max,step:f.step,u:f.u,opts:f.opts})));
+const fmtN=v=>String(v).replace('.',',');
+const shown=v=>String(v).slice(0,40);
+function accTxt(sp){
+  let t=ACC_TXT[sp.id]||(sp.t==='rng'?fmtN(sp.min)+' a '+fmtN(sp.max):'Inteiro, zero ou maior');
+  if(EXTRA[sp.id])t+=' · '+EXTRA[sp.id];
+  return t;
+}
+function exportVal(sp){
+  const v=P[sp.id];
+  if(sp.t==='chk')return v?'Sim':'Não';
+  if(sp.t==='sel'){const o=sp.opts.find(x=>x[0]===v);return o?String(o[1]).split(' (')[0]:v}
+  return v;
+}
+function listFor(sp){
+  if(sp.t==='chk')return ['Sim','Não'];
+  if(sp.t==='sel')return sp.opts.map(o=>String(o[1]).split(' (')[0]);
+  return null;
+}
+
+/* --- leitura --- */
+function parseBool(raw){
+  if(typeof raw==='boolean')return raw;
+  const t=norm(raw);
+  if(['sim','s','true','verdadeiro','1','x','yes','y'].includes(t))return true;
+  if(['nao','n','false','falso','0','no'].includes(t))return false;
+  return null;
+}
+function parseSel(id,raw){
+  const t=norm(raw);
+  if(id==='tipo'){if(/^(0|com)/.test(t))return 0;if(/^(1|ser)/.test(t))return 1;return null}
+  if(id==='regime'){if(t.includes('simples')||t==='0')return 0;if(t.includes('presum')||t==='1')return 1;if(t.includes('real')||t==='2')return 2;return null}
+  if(id==='mesIni'){
+    if(/^\d+$/.test(t)){const k=parseInt(t,10);return k>=1&&k<=12?k-1:null}
+    const ix=MESES.findIndex(m=>t.startsWith(m));return ix>=0?ix:null;
+  }
+  if(id==='anoIni'){const k=parseInt(t,10);return [2026,2027,2028].includes(k)?k:null}
+  if(id==='n'){const k=parseInt(t,10);return [6,12,18,24,36,48,60].includes(k)?k:null}
+  if(id==='d1Sys'||id==='d2Sys'){if(t.startsWith('sac')||t==='0')return 0;if(t.includes('price')||t.includes('tabela')||t==='1')return 1;return null}
+  return null;
+}
+function parseNum(raw,isMoney){
+  if(typeof raw==='number')return isFinite(raw)?raw:NaN;
+  let t=String(raw).replace(/R\$|%|\s| /g,'');
+  if(!t)return NaN;
+  const neg=/^[-−–]/.test(t)||/^\(.*\)$/.test(t);
+  t=t.replace(/^[-−–(]+|\)$/g,'');
+  if(!/^[\d.,]+$/.test(t))return NaN;
+  const nc=(t.match(/,/g)||[]).length, nd=(t.match(/\./g)||[]).length;
+  const grpC=/^\d{1,3}(,\d{3})+$/, grpD=/^\d{1,3}(\.\d{3})+$/;
+  if(nc&&nd){
+    // os dois separadores: o último é o decimal e o outro é o de milhar
+    const dec=t.lastIndexOf(',')>t.lastIndexOf('.')?',':'.', th=dec===','?'.':',';
+    const ip=t.slice(0,t.lastIndexOf(dec)), fp=t.slice(t.lastIndexOf(dec)+1);
+    if(ip.indexOf(dec)>=0||!/^\d+$/.test(fp)||!(th===','?grpC:grpD).test(ip))return NaN;
+    t=ip.split(th).join('')+'.'+fp;
+  }else if(nc){
+    if(grpC.test(t)&&(nc>1||isMoney))t=t.split(',').join('');   // 1,200,000 ou 900,000 em reais: milhar
+    else if(nc===1)t=t.replace(',','.');                         // 1,2: decimal
+    else return NaN;
+  }else if(nd){
+    if(grpD.test(t)&&(nd>1||isMoney))t=t.split('.').join('');    // 1.200.000 ou 1.200 em reais: milhar
+    else if(nd>1)return NaN;
+  }
+  const v=parseFloat(t);
+  return isNaN(v)?NaN:(neg?-v:v);
+}
+function validate(sp,raw){
+  const bad=m=>({err:m});
+  if(sp.t==='chk'){const b=parseBool(raw);return b==null?bad('valor "'+shown(raw)+'" não reconhecido (use Sim ou Não)'):{v:b}}
+  if(sp.t==='sel'){const v=parseSel(sp.id,raw);return v==null?bad('valor "'+shown(raw)+'" não reconhecido ('+accTxt(sp)+')'):{v}}
+  if(sp.t==='txt')return {v:cleanNome(raw)};
+  const n=parseNum(raw,sp.t==='num');
+  if(isNaN(n))return bad('valor "'+shown(raw)+'" não é um número');
+  if(sp.t==='num'){
+    if(n<0||n>999999999999)return bad(shown(raw)+' fora da faixa (0 a 999.999.999.999)');
+    return {v:Math.round(n)};
+  }
+  if(n<sp.min||n>sp.max)return bad(shown(raw)+' fora da faixa ('+fmtN(sp.min)+' a '+fmtN(sp.max)+')');
+  const dec=(String(sp.step).split('.')[1]||'').length;
+  return {v:+n.toFixed(dec)};
+}
+function importRows(rows){
+  const warn=[],vals={},unknown=[]; let blank=0;
+  let hi=-1,ki=0,li=0,vi=1;
+  for(let r=0;r<Math.min(rows.length,10);r++){
+    const n=(rows[r]||[]).map(norm), v=n.indexOf('valor');
+    if(v>=0&&(n.indexOf('chave')>=0||n.indexOf('campo')>=0)){hi=r;vi=v;ki=n.indexOf('chave');li=n.indexOf('campo');break}
+  }
+  const byKey={},byLabel={};
+  SPEC.forEach(sp=>{byKey[norm(sp.id)]=sp;byLabel[norm(sp.campo)]=sp});
+  FIELDS.forEach(g=>g.items.forEach(f=>{if(typeof f.l==='string')byLabel[norm(f.l)]=SPEC.find(x=>x.id===f.id)}));
+  for(let r=hi+1;r<rows.length;r++){
+    const row=rows[r]; if(!row||!row.length)continue;
+    const kc=ki>=0?norm(row[ki]):'', lc=li>=0?norm(row[li]):'';
+    if(!kc&&!lc)continue;
+    const sp=(kc&&byKey[kc])||(lc&&byLabel[lc])||null;
+    const raw=row[vi], isBlank=raw==null||String(raw).trim()==='';
+    if(!sp){if(!isBlank)unknown.push(shown(row[ki>=0&&row[ki]!==''?ki:li]));continue}
+    if(isBlank){blank++;continue}
+    if(sp.id in vals)warn.push(sp.campo+': aparece mais de uma vez; vale a última linha.');
+    const res=validate(sp,raw);
+    if(res.err)warn.push(sp.campo+': '+res.err+'; ignorado.');
+    else vals[sp.id]=res.v;
+  }
+  return {vals,warn,unknown,blank};
+}
+function parseCSV(text){
+  text=text.replace(/^﻿/,'');
+  const first=text.split(/\r?\n/).find(l=>l.trim())||'';
+  const cnt={';':first.split(';').length-1,',':first.split(',').length-1,'\t':first.split('\t').length-1};
+  const d=cnt[';']>=cnt[','] && cnt[';']>=cnt['\t'] ? ';' : (cnt[',']>=cnt['\t'] ? ',' : '\t');
+  const rows=[]; let row=[],cur='',q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){
+      if(c==='"'){if(text[i+1]==='"'){cur+='"';i++}else q=false}
+      else cur+=c;
+    }else if(c==='"'&&cur==='')q=true;
+    else if(c===d){row.push(cur);cur=''}
+    else if(c==='\n'||c==='\r'){
+      if(c==='\r'&&text[i+1]==='\n')i++;
+      row.push(cur);cur='';
+      if(row.some(x=>x!==''))rows.push(row);
+      row=[];
+      if(rows.length>2000)break;
+    }else cur+=c;
+  }
+  row.push(cur); if(row.some(x=>x!==''))rows.push(row);
+  return rows;
+}
+function decodeText(buf){
+  try{return new TextDecoder('utf-8',{fatal:true}).decode(buf)}
+  catch(e){return new TextDecoder('windows-1252').decode(buf)}
+}
+const readBuf=f=>f.arrayBuffer?f.arrayBuffer():new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>rej(r.error);r.readAsArrayBuffer(f)});
+let XLP=null;
+function loadExcelJS(){
+  if(window.ExcelJS)return Promise.resolve(window.ExcelJS);
+  if(XLP)return XLP;
+  XLP=new Promise((res,rej)=>{
+    const sc=document.createElement('script');
+    sc.src='https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';
+    sc.onload=()=>window.ExcelJS?res(window.ExcelJS):rej(new Error('net'));
+    sc.onerror=()=>rej(new Error('net'));
+    document.head.appendChild(sc);
+  });
+  XLP.catch(()=>{XLP=null});
+  return XLP;
+}
+function cellVal(v){
+  if(v==null)return '';
+  if(typeof v==='object'){
+    if(v instanceof Date)return '';
+    if('result' in v)return cellVal(v.result);
+    if(Array.isArray(v.richText))return v.richText.map(t=>t.text).join('');
+    if('text' in v)return String(v.text);
+    return '';
+  }
+  return v;
+}
+async function readXlsx(buf){
+  const E=await loadExcelJS(), wb=new E.Workbook();
+  await wb.xlsx.load(buf);
+  const ws=wb.worksheets.find(w=>norm(w.name)==='premissas')||wb.worksheets[0];
+  const rows=[]; if(!ws)return rows;
+  ws.eachRow({includeEmpty:false},row=>{
+    if(rows.length>2000)return;
+    const v=row.values, arr=[];
+    for(let i=1;i<v.length;i++)arr.push(cellVal(v[i]));
+    rows.push(arr);
+  });
+  return rows;
+}
+
+/* --- aviso e aplicação --- */
+const impRep=document.getElementById('imprep'), fnote=document.getElementById('fnote');
+function showRep(kind,title,items){
+  impRep.textContent='';
+  const box=document.createElement('div'); box.className='imp'+(kind==='err'?' err':''); box.setAttribute('role','status');
+  const tx=document.createElement('div'); tx.className='tx';
+  const b=document.createElement('b'); b.textContent=title; tx.appendChild(b);
+  if(items&&items.length){
+    const ul=document.createElement('ul');
+    items.slice(0,8).forEach(t=>{const li=document.createElement('li');li.textContent=t;ul.appendChild(li)});
+    if(items.length>8){const li=document.createElement('li');li.textContent='e mais '+(items.length-8)+' aviso(s).';ul.appendChild(li)}
+    tx.appendChild(ul);
+  }
+  const x=document.createElement('button'); x.type='button'; x.className='x'; x.textContent='Fechar';
+  x.addEventListener('click',()=>{impRep.textContent=''});
+  box.appendChild(tx); box.appendChild(x); impRep.appendChild(box);
+  try{impRep.scrollIntoView({block:'nearest',behavior:'smooth'})}catch(e){}
+}
+function applyImport(vals){
+  clearTimeout(burst);burst=0;
+  let base={...P}, tipoMudou=false;
+  if('tipo' in vals&&vals.tipo!==P.tipo){base={...defaultsFor(vals.tipo),tipo:vals.tipo,mesIni:P.mesIni,anoIni:P.anoIni,n:P.n,nome:P.nome};tipoMudou=true}
+  P={...base,...vals}; PRESET=null;
+  buildFields(); renderPresets(); persist(true); update();
+  return tipoMudou;
+}
+async function importFile(f){
+  const name=f.name||'arquivo', ext=(name.split('.').pop()||'').toLowerCase();
+  if(ext!=='xlsx'&&ext!=='csv'){showRep('err','Formato não suportado.',['Use um arquivo .xlsx ou .csv. Para um arquivo .xls, salve-o como .xlsx.']);return}
+  if(f.size>2*1024*1024){showRep('err','Arquivo grande demais.',['O limite é 2 MB.']);return}
+  if(!f.size){showRep('err','O arquivo está vazio.',[]);return}
+  fnote.textContent='Lendo '+name+'…';
+  let rows;
+  try{
+    const buf=await readBuf(f);
+    rows=ext==='csv'?parseCSV(decodeText(buf)):await readXlsx(buf);
+  }catch(err){
+    const net=ext==='xlsx'&&err&&err.message==='net';
+    fnote.textContent='Não foi possível importar.';
+    showRep('err',net?'Não foi possível carregar o leitor de Excel.':'Não foi possível ler o arquivo.',[net?'Verifique a conexão com a internet ou salve a planilha como CSV e importe o CSV.':'Confira se é um .xlsx ou .csv válido, com a aba Premissas.']);
+    return;
+  }
+  const out=importRows(rows), n=Object.keys(out.vals).length;
+  if(!n){
+    fnote.textContent='Nenhuma premissa reconhecida.';
+    showRep('err','Nenhuma premissa foi reconhecida.',['Baixe o modelo, preencha a coluna Valor e mantenha a coluna Chave.'].concat(out.warn));
+    return;
+  }
+  const tipoMudou=applyImport(out.vals);
+  const items=[];
+  if(tipoMudou)items.push('O tipo de empresa mudou: as premissas não informadas assumiram o padrão do novo tipo.');
+  if(out.blank)items.push(out.blank+' linha(s) em branco mantiveram o valor atual.');
+  out.warn.forEach(w=>items.push(w));
+  if(out.unknown.length)items.push('Não reconhecido: '+out.unknown.slice(0,5).join(', ')+(out.unknown.length>5?' e mais '+(out.unknown.length-5):'')+'.');
+  const t=n+' premissa'+(n>1?'s':'')+' importada'+(n>1?'s':'')+' de '+shown(name)+'. Use Desfazer para reverter.';
+  fnote.textContent='Último arquivo importado: '+shown(name)+'.';
+  showRep('ok',t,items);
+}
+document.getElementById('import').addEventListener('click',()=>{const i=document.getElementById('impfile');i.value='';i.click()});
+document.getElementById('impfile').addEventListener('change',e=>{const f=e.target.files&&e.target.files[0];if(f)importFile(f)});
+
+/* --- modelo para baixar (valores atuais) --- */
+const csvEsc=v=>{let t=String(v);if(/^[=+\-@]/.test(t)&&!/^-?[\d.,]+$/.test(t))t="'"+t;return /[";\r\n]/.test(t)?'"'+t.replace(/"/g,'""')+'"':t};
+function buildCsv(){
+  const rows=[['Grupo','Campo','Valor','Unidade','Valores aceitos','Chave']];
+  SPEC.forEach(sp=>{const v=exportVal(sp);rows.push([sp.g,sp.campo,sp.t==='num'?nf0.format(v):typeof v==='number'?fmtN(v):v,sp.t==='num'?'R$':(UNIT[sp.u]||''),accTxt(sp),sp.id])});
+  return '﻿'+rows.map(r=>r.map(csvEsc).join(';')).join('\r\n')+'\r\n';
+}
+async function buildXlsx(){
+  const E=await loadExcelJS(), wb=new E.Workbook();
+  wb.creator='Simulador de Fluxo de Caixa'; wb.created=new Date();
+  const ws=wb.addWorksheet('Premissas',{views:[{state:'frozen',ySplit:1}]});
+  ws.columns=[{width:34},{width:52},{width:22},{width:12},{width:48},{width:10}];
+  const head=ws.addRow(['Grupo','Campo','Valor','Unidade','Valores aceitos','Chave']);
+  head.height=22;
+  head.eachCell(c=>{c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF0E6378'}};c.alignment={vertical:'middle'}});
+  const edge={style:'thin',color:{argb:'FFD2DCE0'}};
+  SPEC.forEach(sp=>{
+    const ev=exportVal(sp), row=ws.addRow([sp.g,sp.campo,sp.t==='rng'?fmtN(ev):sp.t==='num'?nf0.format(ev):ev,sp.t==='num'?'R$':(UNIT[sp.u]||''),accTxt(sp),sp.id]);
+    const c=row.getCell(3);
+    c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF4CC'}};
+    c.border={top:edge,left:edge,bottom:edge,right:edge};
+    c.alignment={horizontal:'right'};
+    if(sp.t==='num'||sp.t==='rng')c.numFmt='@';
+    const lst=listFor(sp);
+    if(lst)c.dataValidation={type:'list',allowBlank:true,formulae:['"'+lst.join(',')+'"'],showErrorMessage:true,errorStyle:'warning',errorTitle:'Valor não reconhecido',error:'Escolha um valor da lista.'};
+    else if(sp.t==='rng'){/* texto com vírgula: sem validação numérica; o simulador confere a faixa ao importar */}
+    /* valores em reais e taxas ficam como texto (ponto no milhar, vírgula no decimal); o simulador confere ao importar */
+    row.getCell(5).font={color:{argb:'FF566A72'}};
+    row.getCell(6).font={color:{argb:'FF8A9BA2'}};
+  });
+  const wi=wb.addWorksheet('Instruções');
+  wi.getColumn(1).width=110;
+  [
+   'Como usar este modelo',
+   'Preencha apenas a coluna Valor (células amarelas) da aba Premissas. Não altere a coluna Chave: é ela que o simulador usa para reconhecer cada campo.',
+   'Salve o arquivo e use o botão Importar arquivo no simulador. Você pode importar o .xlsx ou exportar a aba Premissas como CSV.',
+   'Células em branco mantêm o valor atual do simulador. Se o Tipo de empresa informado for diferente do atual, os campos em branco assumem o padrão do novo tipo.',
+   'Valores fora da faixa aceita ou não reconhecidos são ignorados, e o simulador mostra um aviso com o que não foi aplicado.',
+   'Percentuais: digite o número sem o símbolo, com vírgula como separador decimal (por exemplo 1,5 para 1,5%). Valores em reais: número inteiro com ponto no milhar, sem R$ (por exemplo 400.000).',
+   'ISS e PIS/COFINS valem só para empresas de Serviços em Lucro Presumido ou Real. Em Comércio, use Impostos sobre vendas (ICMS, PIS e COFINS). No Simples Nacional, use apenas a alíquota efetiva do Simples, que já inclui o ISS.',
+   'IR e CSLL sobre o lucro só se aplica ao Lucro Real. O prazo médio de estoque não se aplica a Serviços.',
+   'Os valores de partida deste arquivo são os que estavam no simulador quando o modelo foi baixado.'+(temNome()?'':' Modelo educacional, sem valor de recomendação financeira.')
+  ].forEach((t,i)=>{const r=wi.addRow([t]);r.getCell(1).alignment={wrapText:true,vertical:'top'};if(i===0)r.getCell(1).font={bold:true,size:14}});
+  return new Uint8Array(await wb.xlsx.writeBuffer());
+}
+let DL=null;
+(async()=>{
+  try{if(window.claude&&window.claude.use)DL=await window.claude.use('downloads')}catch(e){DL=null}
+  if(!DL){
+    /* fora do Claude (arquivo HTML aberto no navegador): download comum */
+    DL={save:async({filename,data})=>{
+      const ext=String(filename).split('.').pop(), mt={pdf:'application/pdf',pptx:'application/vnd.openxmlformats-officedocument.presentationml.presentation',xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',csv:'text/csv;charset=utf-8'}[ext]||'application/octet-stream';
+      const blob=new Blob([data],{type:mt}), url=URL.createObjectURL(blob), a=document.createElement('a');
+      a.href=url;a.download=filename;a.style.display='none';document.body.appendChild(a);a.click();
+      setTimeout(()=>{a.remove();URL.revokeObjectURL(url)},4000);
+    }};
+  }
+  document.getElementById('tpl').hidden=!DL;
+  document.getElementById('exp').hidden=!DL;
+  if(DL)document.getElementById('mailmsg').textContent='O resumo vai no corpo da mensagem. Para enviar o relatório completo, exporte em PDF, PowerPoint ou Excel e anexe o arquivo ao e-mail.';
+})();
+document.getElementById('tpl').addEventListener('click',async e=>{
+  const k=e.target.dataset&&e.target.dataset.dl; if(!k||!DL)return;
+  try{
+    fnote.textContent='Gerando o modelo…';
+    const data=k==='csv'?buildCsv():await buildXlsx();
+    await DL.save({filename:'modelo-premissas-simulador.'+k,data});
+    fnote.textContent='Modelo pronto. Preencha a coluna Valor e use Importar arquivo.';
+  }catch(err){
+    const c=err&&err.code;
+    if(c==='declined'){fnote.textContent='Download cancelado.';return}
+    const net=err&&err.message==='net';
+    fnote.textContent=net?'Não foi possível carregar o gerador de Excel. Tente o modelo em CSV.':'Não foi possível baixar o modelo.';
+  }
+});
+
+/* ---------- relatório em PDF e PowerPoint ---------- */
+const LIBS={
+  pdf:{u:'https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js',ok:()=>!!(window.jspdf&&window.jspdf.jsPDF)},
+  ppt:{u:'https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js',ok:()=>!!window.PptxGenJS}
+};
+const LIBP={};
+function loadLib(k){
+  const s=LIBS[k]; if(s.ok())return Promise.resolve();
+  if(LIBP[k])return LIBP[k];
+  LIBP[k]=new Promise((res,rej)=>{
+    const sc=document.createElement('script');
+    sc.src=s.u;
+    sc.onload=()=>s.ok()?res():rej(new Error('net'));
+    sc.onerror=()=>rej(new Error('net'));
+    document.head.appendChild(sc);
+  });
+  LIBP[k].catch(()=>{LIBP[k]=null});
+  return LIBP[k];
+}
+const RK={ink:'#12222A',muted:'#566A72',line:'#D2DCE0',acc:'#0E6378',accBg:'#DCEEF2',pos:'#1F7346',neg:'#B23A2B',warn:'#9A6208',
+  posBg:'#DDF0E5',negBg:'#F6DDD8',warnBg:'#F8EBD0',surf:'#F2F6F7',white:'#FFFFFF'};
+const noHash=h=>h.replace('#','');
+
+function assumGroups(){
+  const fv=f=>{
+    const v=P[f.id];
+    if(f.t==='chk')return v?'Sim':'Não';
+    if(f.t==='sel'){const o=f.opts.find(x=>x[0]===v);return o?o[1]:String(v)}
+    if(f.t==='rng')return fmtU[f.u](v);
+    if(f.t==='txt')return String(v||'').trim()||'Não informado (empresa de exemplo)';
+    return 'R$ '+nf0.format(v);
+  };
+  return FIELDS.map(g=>({
+    g:g.g.replace(' (opcional)',''),
+    rows:g.items.filter(f=>!(f.hide&&f.hide())&&!(f.dis&&f.dis())).map(f=>[L(f).replace(' (opcional)',''),fv(f)])
+  })).filter(g=>g.rows.length);
+}
+function wfSteps(r){
+  const R=r.rows,T=r.T;
+  const st=[{k:['Saldo','inicial'],v:R[0].ini,tot:1},{k:['Fluxo','operacional'],v:T.fco},{k:['Capex'],v:T.fci},{k:['Dívida','e lucros'],v:T.fcf},{k:['Saldo','final'],v:R[R.length-1].fim,tot:1}];
+  let run=0;
+  st.forEach(s=>{if(s.tot){s.a=0;s.b=s.v;run=s.v}else{s.a=run;s.b=run+s.v;run=s.b}});
+  return st;
+}
+function finSections(){
+  const out=[];
+  ROWS.forEach(x=>{if(x[0]==='sec')out.push({t:x[1],rows:[]});else out[out.length-1].rows.push(x)});
+  return out;
+}
+function chunks(n,max){const c=Math.ceil(n/max),per=Math.ceil(n/c),o=[];for(let i=0;i<n;i+=per)o.push([i,Math.min(n,i+per)]);return o}
+
+function reportData(full){
+  if(full){MONEY_FULL=true;update()}
+  try{return reportDataNow()}finally{if(full){MONEY_FULL=false;update()}}
+}
+const prepTxt=()=>{const c=ID.consultor.trim(),t=ID.contato.trim();return c?'Preparado por '+c+(t?' · '+t:''):t};
+function reportDataNow(){
+  const r=RES,R=r.rows,L0=R[R.length-1];
+  const al=document.querySelector('#alert .alert');
+  const pr=PRESET?PRESETS.find(x=>x.id===PRESET):null;
+  return {
+    emp:empNome(), nome:temNome(),
+    aviso:temNome()?'Simulação baseada nas premissas informadas; os resultados reais podem diferir. Não constitui auditoria, parecer contábil nem recomendação financeira.':'Modelo educacional com dados fictícios, sem valor de recomendação financeira.',
+    cons:ID.consultor.trim(), contato:ID.contato.trim(), logo:LOGO, prep:prepTxt(),
+    selo:temNome()?'SIMULAÇÃO DE FLUXO DE CAIXA':'DADOS FICTÍCIOS · MODELO EDUCACIONAL',
+    tipo:P.tipo===1?'Serviços':'Comércio',
+    cen:SCEN[SC].nome, cenKey:SC, per:MESES_L[R[0].mi].toLowerCase()+' de '+R[0].yr+' a '+MESES_L[L0.mi].toLowerCase()+' de '+L0.yr, n:R.length,
+    ini:MESES[R[0].mi]+R[0].yr, fim:MESES[L0.mi]+L0.yr,
+    data:(()=>{const n=new Date();return n.toLocaleDateString('pt-BR')+' às '+n.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})})(),
+    preset:pr?pr.n:null,
+    kpis:kpiData(r),
+    alertTxt:al?al.textContent.trim():'', alertBad:!!(al&&al.classList.contains('bad')),
+    lead:document.getElementById('lead').textContent,
+    assum:assumGroups(), r, all:ALL, idx:idxGroups(r,P), scDefs:SCDEFS, scVals:SCDEFS.map(([nm,f])=>[nm,['pess','base','otim'].map(k=>f(ALL[k]))]), scNotes:scenNotesData(),
+    sens:{min:sensData('min'),fim:sensData('fim')},
+    cmvNome:P.tipo===1?'custo dos serviços':'CMV',
+    notes:[...document.querySelectorAll('.about li')].map(li=>li.textContent.trim()).filter(t=>!/^(Importação|Relatório):/.test(t)).map(t=>temNome()&&/^Os números dos exemplos são fictícios/.test(t)?'Esta é uma simulação elaborada com as premissas informadas para a empresa. Não é auditada, não substitui a contabilidade nem a análise de um profissional, e os resultados reais podem diferir.':t)
+  };
+}
+function repFile(d,ext){const sl=d.nome?d.emp.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,30):'';return `relatorio-fluxo-caixa-${sl?sl+'-':''}${d.cenKey}-${d.ini}-${d.fim}.${ext}`}
+
+/* ---- PDF ---- */
+const wa=s=>String(s==null?'':s).replace(/[−‒]/g,'-').replace(/[–—]/g,'-').replace(/≥/g,'>=').replace(/≤/g,'<=').replace(/→/g,'->').replace(/[↓]/g,'').replace(/≈/g,'~')
+  .replace(/[‘’]/g,"'").replace(/[“”]/g,'"').replace(/[•]/g,'-').replace(/…/g,'...').replace(/[ -​  ]/g,' ').replace(/[^\u0000-ÿ]/g,'?');
+
+async function buildPdf(d){
+  await loadLib('pdf');
+  MONEY_FULL=REPORT_FULL;
+  try{return buildPdfBody(d)}finally{MONEY_FULL=false}
+}
+function buildPdfBody(d){
+  const doc=new window.jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4',compress:true});
+  doc.setProperties({title:wa('Relatório de fluxo de caixa - '+d.emp),subject:d.nome?'Simulação de fluxo de caixa':'Simulação com dados fictícios',creator:'Simulador de Fluxo de Caixa'});
+  const K=RK,W=297,H=210,M=14,CW=W-2*M;
+  const fc=h=>doc.setFillColor(h), dc=h=>doc.setDrawColor(h), tc=h=>doc.setTextColor(h);
+  const tx=(s,x,y,o)=>doc.text(wa(s),x,y,o);
+  const font=(sz,b)=>{doc.setFont('helvetica',b?'bold':'normal');doc.setFontSize(sz)};
+  const fit=(s,w)=>{s=wa(s);if(doc.getTextWidth(s)<=w)return s;while(s.length>1&&doc.getTextWidth(s+'...')>w)s=s.slice(0,-1);return s+'...'};
+  const wrap=(s,w)=>doc.splitTextToSize(wa(s),w);
+  const lw=v=>doc.setLineWidth(v);
+  const poly=(pts,style,closed)=>{const rel=[];for(let i=1;i<pts.length;i++)rel.push([pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]]);doc.lines(rel,pts[0][0],pts[0][1],[1,1],style,!!closed)};
+  const rr=(x,y,w,h,r,style)=>doc.roundedRect(x,y,w,h,r,r,style);
+  let pg=0;
+  function page(title,sub){
+    if(pg>0)doc.addPage(); pg++;
+    fc(K.acc);doc.rect(0,0,W,3,'F');
+    font(17,1);tc(K.ink);tx(title,M,17);
+    if(sub){font(9);tc(K.muted);tx(sub,M,23)}
+    return 30;
+  }
+  function h2(t,x,y){font(10,1);tc(K.ink);tx(t,x,y)}
+  const isNeg=v=>/^\s*[−\-]\s*(R\$|\d)|^\s*\(\d/.test(String(v));
+  const sevc=s=>s==='ok'?K.pos:s==='warn'?K.warn:K.neg;
+  const sevb=s=>s==='ok'?K.posBg:s==='warn'?K.warnBg:K.negBg;
+  const sevt={ok:'Saudável',warn:'Atenção',bad:'Crítico'};
+  const R=d.r.rows,T=d.r.T,m=d.r.m,n=R.length;
+
+  /* gráficos */
+  function yAxis(x0,x1,tk,yf,fmt){
+    dc(K.line);lw(.15);font(7);tc(K.muted);
+    tk.forEach(v=>{doc.line(x0,yf(v),x1,yf(v));tx(fmt(v),x0-1.5,yf(v)+1,{align:'right'})});
+  }
+  function xAxis(x0,iw,y,rows){
+    const slot=iw/rows.length,step=Math.max(1,Math.ceil(9.5/slot));let last=null;
+    font(7);tc(K.muted);
+    rows.forEach((q,i)=>{if(i%step===0){const t=MESES[q.mi]+(q.yr!==last?'/'+String(q.yr).slice(2):'');last=q.yr;tx(t,x0+(i+.5)*slot,y,{align:'center'})}});
+  }
+  function cashChart(x,y,w,h){
+    const ml=15,mr=3,iw=w-ml-mr,X=i=>x+ml+(i+.5)*iw/n;
+    const t1=y+8,b1=y+h*.6,t2=b1+17,b2=y+h-7;
+    font(7.5);tc(K.muted);tx('Saldo de caixa (R$ mil)',x,y+3);
+    const sv=R.map(q=>q.fim/1000),tk=niceTicks(Math.min(0,...sv),Math.max(...sv),4),lo=tk[0],hi=tk[tk.length-1];
+    const Y=v=>b1-(v-lo)/(hi-lo)*(b1-t1);
+    yAxis(x+ml,x+w-mr,tk,Y,v=>nf0.format(v));
+    xAxis(x+ml,iw,b1+6,R);
+    const base=Y(lo<0?0:lo),pts=sv.map((v,i)=>[X(i),Y(v)]);
+    fc(K.accBg);poly([[pts[0][0],base],...pts,[pts[n-1][0],base]],'F',true);
+    dc(K.acc);lw(.7);poly(pts,'S');
+    const mi=m.minI;fc(K.white);dc(K.warn);lw(.6);doc.circle(pts[mi][0],pts[mi][1],1.3,'FD');
+    dc(K.acc);doc.circle(pts[n-1][0],pts[n-1][1],1.1,'FD');
+    const above=pts[mi][1]>(t1+b1)/2,tx0=Math.min(Math.max(pts[mi][0],x+ml+12),x+w-mr-12);
+    font(7.5,1);tc(sv[mi]<0?K.neg:K.warn);tx('mín. '+nf0.format(sv[mi]),tx0,above?Math.min(pts[mi][1]+6,b1+2.6):pts[mi][1]-3.5,{align:'center'});
+    const stp=Math.max(1,Math.ceil(7.2/(iw/n))),fs=n>18?5.6:(n>12?6:6.5);
+    sv.forEach((v,i)=>{
+      if(i===mi||!(i%stp===0||i===n-1)||(i!==n-1&&n-1-i<stp*0.8))return;
+      font(fs);tc(v<0?K.neg:K.muted);const lo=(i>0&&v<sv[i-1])&&(i<n-1&&v<sv[i+1]);tx(nf0.format(Math.round(v)),pts[i][0],pts[i][1]+(lo?4.2:-2.4),{align:'center'});
+    });
+    font(7.5);tc(K.muted);tx('Variação líquida no mês (R$ mil)',x,t2-5);
+    const nv=R.map(q=>q.net/1000),ext=Math.max(...nv.map(Math.abs),1),tk2=niceTicks(-ext,ext,2),lo2=tk2[0],hi2=tk2[tk2.length-1];
+    const Y2=v=>b2-(v-lo2)/(hi2-lo2)*(b2-t2);
+    yAxis(x+ml,x+w-mr,tk2,Y2,v=>nf0.format(v));
+    const bw=Math.max(1,iw/n*.55);
+    nv.forEach((v,i)=>{const yy=Y2(Math.max(v,0)),hh=Math.max(.3,Math.abs(Y2(v)-Y2(0)));fc(v>=0?K.pos:K.neg);doc.rect(X(i)-bw/2,yy,bw,hh,'F')});
+    nv.forEach((v,i)=>{
+      if(Math.round(v)===0&&Math.abs(v)<0.5)return;
+      if(!(i%stp===0||i===n-1)||(i!==n-1&&n-1-i<stp*0.8))return;
+      font(fs);tc(v<0?K.neg:K.ink);
+      const val=nf0.format(Math.round(v));
+      if(v>=0)tx(val,X(i),Y2(v)-1,{align:'center'});else tx(val,X(i),Y2(v)+2.8,{align:'center'});
+    });
+    xAxis(x+ml,iw,y+h+1,R);
+  }
+  function waterfall(x,y,w,h){
+    const st=wfSteps(d.r),ml=15,mr=3,iw=w-ml-mr,t=y+8,b=y+h-10,band=iw/5,bw=Math.min(14,band*.6);
+    font(7.5);tc(K.muted);tx('R$ mil',x,y+3);
+    const vals=st.flatMap(s=>[s.a/1000,s.b/1000]),tk=niceTicks(Math.min(0,...vals),Math.max(...vals),4),lo=tk[0],hi=tk[tk.length-1];
+    const Y=v=>b-(v-lo)/(hi-lo)*(b-t);
+    yAxis(x+ml,x+w-mr,tk,Y,v=>nf0.format(v));
+    st.forEach((s,k)=>{
+      const cx=x+ml+(k+.5)*band,ya=Y(s.a/1000),yb=Y(s.b/1000),top=Math.min(ya,yb),hh=Math.max(.4,Math.abs(ya-yb));
+      fc(s.tot?K.acc:s.v>=0?K.pos:K.neg);doc.rect(cx-bw/2,top,bw,hh,'F');
+      font(7.5,1);tc(s.v<0?K.neg:K.ink);tx((!s.tot&&s.v>0?'+':'')+nf0.format(Math.round(s.v/1000)+0),cx,top-1.5,{align:'center'});
+      if(k<st.length-1){dc(K.muted);lw(.15);doc.line(cx+bw/2,yb,cx+band-bw/2,yb)}
+      font(7);tc(K.muted);s.k.forEach((ln,j)=>tx(ln,cx,b+4.5+j*3.2,{align:'center'}));
+    });
+  }
+  function scChart(x,y,w,h){
+    const keys=['pess','base','otim'],col={pess:K.neg,base:K.acc,otim:K.pos};
+    const ml=15,mr=38,iw=w-ml-mr,t=y+8,b=y+h-8,X=i=>x+ml+(i+.5)*iw/n;
+    font(7.5);tc(K.muted);tx('Saldo de caixa (R$ mil)',x,y+3);
+    const all=keys.flatMap(k=>d.all[k].rows.map(q=>q.fim/1000)),tk=niceTicks(Math.min(0,...all),Math.max(...all),4),lo=tk[0],hi=tk[tk.length-1];
+    const Y=v=>b-(v-lo)/(hi-lo)*(b-t);
+    yAxis(x+ml,x+w-mr,tk,Y,v=>nf0.format(v));
+    const ends=[];
+    keys.forEach(k=>{
+      dc(col[k]);lw(k===SC?.9:.45);
+      poly(d.all[k].rows.map((q,i)=>[X(i),Y(q.fim/1000)]),'S');
+      ends.push({k,y:Y(d.all[k].rows[n-1].fim/1000),v:d.all[k].rows[n-1].fim/1000});
+    });
+    ends.sort((p,q)=>p.y-q.y);
+    for(let i=1;i<ends.length;i++)if(ends[i].y-ends[i-1].y<4)ends[i].y=ends[i-1].y+4;
+    ends.forEach(e=>{font(7.5,e.k===SC);tc(col[e.k]);tx(SCEN[e.k].nome+' '+nf0.format(Math.round(e.v)),X(n-1)+2.5,e.y+1)});
+    xAxis(x+ml,iw,y+h-2,R);
+  }
+
+  /* página 1: resumo */
+  pg=1;
+  fc(K.acc);doc.rect(0,0,W,3,'F');
+  font(9,1);tc(K.acc);tx(d.selo,M,14);
+  font(24,1);tc(K.ink);tx('Relatório de Fluxo de Caixa',M,25);
+  font(11);tc(K.muted);tx(fit(`${d.emp} · Cenário ${d.cen} · ${d.per} (${d.n} meses)`,CW),M,32);
+  font(8.5);tx(fit(`${d.prep?d.prep+' · ':''}Gerado em ${d.data}${d.preset?' · Exemplo aplicado: '+d.preset:''}`,CW),M,37.5);
+  if(d.logo){let lh=14,lw=lh*d.logo.w/d.logo.h;if(lw>48){lw=48;lh=lw*d.logo.h/d.logo.w}doc.addImage(d.logo.data,'PNG',W-M-lw,7,lw,lh)}
+  let y=44; const kw=(CW-4*4)/5;
+  d.kpis.forEach(([l,v,nt,neg],i)=>{
+    const x=M+i*(kw+4);fc(K.surf);dc(K.line);lw(.2);rr(x,y,kw,25,1.5,'FD');
+    font(7.5);tc(K.muted);tx(l,x+3,y+6);
+    font(15,1);tc(neg?K.neg:K.ink);tx(v,x+3,y+14.5);
+    font(7.5);tc(isNeg(nt)?K.neg:K.muted);tx(fit(nt,kw-6),x+3,y+21);
+  });
+  y+=31;
+  const aw=wrap(d.alertTxt,CW-10),ah=Math.max(11,4+aw.length*4.6+1);
+  fc(d.alertBad?K.negBg:K.posBg);rr(M,y,CW,ah,1.5,'F');fc(d.alertBad?K.neg:K.pos);doc.rect(M,y,1.6,ah,'F');
+  font(9.5);tc(d.alertBad?K.neg:K.pos);aw.forEach((ln,i)=>tx(ln,M+6,y+6+i*4.6));
+  y+=ah+7;
+  font(10.5);tc(K.ink);const lead=wrap(d.lead,CW);lead.forEach((ln,i)=>tx(ln,M,y+i*5.2));
+  y+=lead.length*5.2+6;
+  h2('Resultado e caixa no período',M,y);y+=3;
+  const sum=[['Receita bruta',T.rb],['Receita líquida',T.rl],['EBITDA',T.ebitda],['Lucro líquido',T.ll],['Fluxo operacional (FCO)',T.fco],['Fluxo de investimento',T.fci],['Fluxo de financiamento',T.fcf],['Variação líquida de caixa',T.net]];
+  const sw=(CW-3*4)/4;
+  sum.forEach(([l,v],i)=>{
+    const x=M+(i%4)*(sw+4),yy=y+Math.floor(i/4)*17;
+    dc(K.line);lw(.2);doc.line(x,yy,x+sw,yy);
+    font(8);tc(K.muted);tx(l,x,yy+5);font(12,1);tc(v<0?K.neg:K.ink);tx(money(v),x,yy+11.5);
+  });
+
+  /* página 2: caixa */
+  y=page('Caixa no período','Saldo mensal, variação líquida e composição da variação de caixa');
+  h2('Saldo de caixa mês a mês',M,y+2);
+  cashChart(M,y+4,168,142);
+  h2('Do saldo inicial ao final',M+178,y+2);
+  waterfall(M+178,y+4,91,95);
+  font(8.5);tc(K.muted);
+  const wn=wrap(`Menor saldo: ${money(m.minV)} em ${lab(R[m.minI])}. ${m.negMonths>0?'Caixa negativo em '+m.negMonths+(m.negMonths===1?' mês.':' meses.'):'Não há mês com caixa negativo.'} Fluxo operacional de ${money(T.fco)} no período, após variação do capital de giro.`,91);
+  wn.forEach((ln,i)=>tx(ln,M+178,y+112+i*4.4));
+
+  /* premissas */
+  y=page('Premissas da simulação','Valores informados no painel no momento da exportação');
+  const colW=(CW-2*8)/3,totH=d.assum.reduce((a,g)=>a+11+g.rows.length*5,0),target=totH/3;
+  let cx=0,cy=0;
+  d.assum.forEach(g=>{
+    const gh=7+g.rows.length*5;
+    if(cy>0&&cy+gh/2>target&&cx<2){cx++;cy=0}
+    const x=M+cx*(colW+8),y0=y+cy;
+    font(8,1);tc(K.acc);tx(g.g.toUpperCase(),x,y0+3);dc(K.accBg);lw(.5);doc.line(x,y0+5,x+colW,y0+5);
+    g.rows.forEach(([a,b],i)=>{
+      const yy=y0+10+i*5;font(8);tc(K.muted);
+      const vtxt=wa(b);font(8,1);const vw=doc.getTextWidth(vtxt);
+      font(8);tx(fit(a,colW-vw-3),x,yy);font(8,1);tc(K.ink);tx(vtxt,x+colW,yy,{align:'right'});
+    });
+    cy+=gh+4;
+  });
+
+  /* DRE e fluxo */
+  chunks(n,12).forEach(([a,b],ci,arr)=>{
+    const last=ci===arr.length-1,cols=b-a+(last?1:0),lab0=60,cw=Math.min(17.5,(CW-lab0)/cols);
+    let yy=page('Projeção mensal: resultado e fluxo de caixa',`R$ mil · parênteses indicam saída ou valor negativo${arr.length>1?' · parte '+(ci+1)+' de '+arr.length:''}`);
+    fc(K.surf);doc.rect(M,yy-4,lab0+cw*cols,6,'F');
+    font(7.5,1);tc(K.muted);tx('R$ mil',M+1.5,yy);
+    for(let i=a;i<b;i++)tx(lab(R[i]),M+lab0+(i-a+1)*cw-1.5,yy,{align:'right'});
+    if(last)tx('Total',M+lab0+cols*cw-1.5,yy,{align:'right'});
+    yy+=4;
+    ROWS.forEach(([k,nm,s,t])=>{
+      if(k==='sec'){yy+=2.4;font(7,1);tc(K.acc);tx(nm.toUpperCase(),M+1.5,yy+1.6);yy+=6.3;return}
+      if(t){fc(K.surf);doc.rect(M,yy-3.4,lab0+cw*cols,4.7,'F')}
+      font(7.5,!!t);tc(K.ink);tx(rowLabel(k,nm),M+1.5,yy);
+      for(let i=a;i<b;i++){const v=R[i][k]*s;font(7.5,!!t);tc(v<-500?K.neg:K.ink);tx(cell(v),M+lab0+(i-a+1)*cw-1.5,yy,{align:'right'})}
+      if(last){const tv=k==='ini'?T.ini:k==='fim'?T.fim:T[k]*s;font(7.5,1);tc(tv<-500?K.neg:K.ink);tx(cell(tv),M+lab0+cols*cw-1.5,yy,{align:'right'})}
+      yy+=4.7;
+    });
+  });
+
+  /* índices */
+  {
+    const head=yy0=>{fc(K.surf);doc.rect(M,yy0-4,CW,6,'F');font(7.5,1);tc(K.muted);tx('Indicador',M+1.5,yy0);tx('Valor',M+98,yy0,{align:'right'});tx('Referência',M+104,yy0);tx('Situação',M+142,yy0);tx('Como é calculado',M+166,yy0)};
+    const first=()=>{let q=page('Índices financeiros','Rentabilidade, liquidez, endividamento, ciclo e caixa. Faixas de referência genéricas de mercado');head(q);return q+5};
+    let yy=first();
+    d.idx.forEach(([g,items])=>{
+      if(yy+8+4.6>H-16){yy=first()}
+      yy+=1.8;font(7.5,1);tc(K.acc);tx(g.toUpperCase(),M+1.5,yy+2);yy+=6;
+      items.forEach(it=>{
+        if(yy+4.6>H-16){yy=first()}
+        font(8);tc(K.ink);tx(fit(it.n,92),M+1.5,yy);
+        font(8.5,1);tc(isNeg(it.v)?K.neg:K.ink);tx(it.v,M+98,yy,{align:'right'});
+        font(7.5);tc(K.muted);tx(fit(it.ref?it.ref:'-',34),M+104,yy);
+        if(it.s){fc(sevb(it.s));rr(M+142,yy-3,17,4,1,'F');font(6.5,1);tc(sevc(it.s));tx(sevt[it.s],M+150.5,yy-.1,{align:'center'})}
+        font(7);tc(K.muted);tx(fit(it.f,CW-166+M-2),M+166,yy);
+        dc(K.line);lw(.1);doc.line(M,yy+1.5,M+CW,yy+1.5);
+        yy+=4.6;
+      });
+    });
+  }
+
+  /* cenários */
+  y=page('Cenários','Pessimista, base e otimista com as mesmas premissas do painel');
+  const nw=(CW-2*5)/3;
+  d.scNotes.forEach((c,i)=>{
+    const x=M+i*(nw+5);fc(i===['base','otim','pess'].indexOf(SC)?K.accBg:K.surf);dc(K.line);lw(.2);rr(x,y,nw,23,1.5,'FD');
+    font(9,1);tc(K.ink);tx(c.n,x+3,y+6);font(8);tc(K.muted);wrap(c.t,nw-6).slice(0,3).forEach((ln,j)=>tx(ln,x+3,y+11.5+j*4))});
+  y+=30;
+  h2('Saldo de caixa por cenário',M,y);
+  scChart(M,y+2,112,92);
+  const keys=['pess','base','otim'],tx0=M+120,c0=52,cw2=(CW-120-c0)/3;
+  fc(K.surf);doc.rect(tx0,y-0.5,c0+3*cw2,6,'F');font(7.5,1);tc(K.muted);tx('Indicador',tx0+1.5,y+3.5);
+  keys.forEach((k,i)=>{tc(k===SC?K.acc:K.muted);tx(SCEN[k].nome,tx0+c0+(i+1)*cw2-1.5,y+3.5,{align:'right'})});
+  let ty=y+10;
+  d.scVals.forEach(([nm,vals])=>{
+    font(7.5);tc(K.ink);tx(fit(nm,c0-2),tx0+1.5,ty);
+    keys.forEach((k,i)=>{if(k===SC){fc(K.accBg);doc.rect(tx0+c0+i*cw2,ty-3.3,cw2,5,'F')}const sv0=vals[i];font(7.5,k===SC);tc(isNeg(sv0)?K.neg:K.ink);tx(fit(sv0,cw2-2),tx0+c0+(i+1)*cw2-1.5,ty,{align:'right'})});
+    dc(K.line);lw(.1);doc.line(tx0,ty+1.7,tx0+c0+3*cw2,ty+1.7);ty+=6.2;
+  });
+
+  /* sensibilidade */
+  y=page('Sensibilidade do caixa',`Prazo médio de recebimento e ${d.cmvNome} variados em torno das premissas atuais · cenário ${d.cen}`);
+  const gw=(CW-10)/2,gl=36,gc=(gw-gl)/5;
+  [['min','Menor saldo de caixa no período (R$ mil)'],['fim','Saldo final de caixa (R$ mil)']].forEach(([k,ttl],gi)=>{
+    const g=d.sens[k],x=M+gi*(gw+10);
+    h2(ttl,x,y+1);
+    fc(K.surf);doc.rect(x,y+5,gw,8,'F');font(6.5,1);tc(K.muted);tx('Recebimento (linhas)',x+1.5,y+8.8);tx(d.cmvNome==='CMV'?'CMV (colunas)':'Custo dos serviços (colunas)',x+1.5,y+11.8);
+    g.cols.forEach((c,j)=>{font(8.5,1);tc(K.ink);tx(c,x+gl+(j+1)*gc-2,y+10.4,{align:'right'})});
+    g.rows.forEach((rw,i)=>{
+      const yy=y+13+i*10;dc(K.line);lw(.1);doc.line(x,yy,x+gw,yy);
+      font(8);tc(K.ink);tx(rw.l,x+1.5,yy+6.3);
+      rw.v.forEach((v,j)=>{
+        const cx0=x+gl+j*gc;
+        if(v<0){fc(K.negBg);doc.rect(cx0,yy+.3,gc,9.4,'F')}
+        const bs=rw.base&&j===2;
+        if(bs){dc(K.acc);lw(.6);doc.rect(cx0+.3,yy+.6,gc-.6,8.8,'S')}
+        font(8.5,bs);tc(v<0?K.neg:K.ink);tx(cell(v),cx0+gc-2,yy+6.3,{align:'right'});
+      });
+    });
+    dc(K.line);lw(.1);doc.line(x,y+13+5*10,x+gw,y+13+5*10);
+  });
+  y+=13+5*10+8;
+  font(8.5);tc(K.muted);
+  wrap(`Cada célula recalcula o modelo inteiro com o prazo de recebimento da linha e o ${d.cmvNome} da coluna, mantendo as demais premissas. Células em vermelho indicam caixa negativo. O contorno marca as premissas atuais.`,CW).forEach((ln,i)=>tx(ln,M,y+i*4.5));
+
+  /* notas */
+  y=page('Notas e limites do modelo','Leia antes de usar os números');
+  d.notes.forEach(t=>{
+    const ls=wrap(t,CW-7);
+    if(y+ls.length*4.5>H-16){y=page('Notas e limites do modelo (continuação)','')}
+    fc(K.acc);doc.circle(M+1.5,y-1,.8,'F');font(9);tc(K.ink);
+    ls.forEach((ln,i)=>tx(ln,M+6,y+i*4.5));y+=ls.length*4.5+3.2;
+  });
+
+  /* rodapé e numeração */
+  const N=doc.getNumberOfPages();
+  for(let i=1;i<=N;i++){
+    doc.setPage(i);dc(K.line);lw(.2);doc.line(M,H-12,W-M,H-12);
+    font(7);tc(K.muted);
+    tx(fit(d.aviso,CW),M,H-8.4);
+    tx(fit(d.emp+' · Cenário '+d.cen+(d.prep?' · '+d.prep:''),CW-30),M,H-4.6);
+    tx('Página '+i+' de '+N,W-M,H-4.6,{align:'right'});
+    if(d.logo&&i>1){let lh=7,lw=lh*d.logo.w/d.logo.h;if(lw>26){lw=26;lh=lw*d.logo.h/d.logo.w}doc.addImage(d.logo.data,'PNG',W-M-lw,6,lw,lh)}
+  }
+  return doc.output('arraybuffer');
+}
+
+/* ---- PowerPoint ---- */
+async function buildPptx(d){
+  await loadLib('ppt');
+  MONEY_FULL=REPORT_FULL;
+  let pptx;
+  try{pptx=buildPptxDoc(d)}finally{MONEY_FULL=false}
+  return await pptx.write({outputType:'arraybuffer'});
+}
+function buildPptxDoc(d){
+  const pptx=new window.PptxGenJS();
+  pptx.layout='LAYOUT_WIDE';
+  pptx.title='Relatório de fluxo de caixa - '+d.emp; pptx.subject=d.nome?'Simulação de fluxo de caixa':'Simulação com dados fictícios';
+  const K={};Object.keys(RK).forEach(k=>K[k]=noHash(RK[k]));
+  const F='Arial',W=13.33,M=0.5,CW=W-2*M;
+  const SH=pptx.shapes||pptx.ShapeType, CH=pptx.charts||pptx.ChartType;
+  pptx.defineSlideMaster({title:'MASTER',background:{color:'FFFFFF'},
+    objects:[
+      {rect:{x:0,y:0,w:W,h:0.12,fill:{color:K.acc}}},
+      {line:{x:M,y:7.02,w:CW,h:0,line:{color:K.line,width:0.75}}},
+      {text:{text:d.aviso,options:{x:M,y:7.04,w:11,h:0.22,fontSize:8,color:K.muted,fontFace:F,margin:0}}},
+      ...(d.prep?[{text:{text:d.prep,options:{x:M,y:7.25,w:11,h:0.2,fontSize:8,color:K.muted,fontFace:F,margin:0}}}]:[]),
+      ...(d.logo?[(()=>{let lh=0.4,lw=lh*d.logo.w/d.logo.h;if(lw/1>1.6){lw=1.6;lh=lw*d.logo.h/d.logo.w}return {image:{x:W-M-lw,y:0.3,w:lw,h:lh,data:d.logo.data}}})()]:[])
+    ],
+    slideNumber:{x:W-M-0.8,y:7.07,w:0.8,h:0.3,fontSize:9,color:K.muted,fontFace:F,align:'right'}});
+  const slide=(t,sub)=>{
+    const s=pptx.addSlide({masterName:'MASTER'});
+    s.addText(t,{x:M,y:0.3,w:CW,h:0.6,fontSize:26,bold:true,color:K.ink,fontFace:F,margin:0});
+    if(sub)s.addText(sub,{x:M,y:0.9,w:CW,h:0.35,fontSize:12,color:K.muted,fontFace:F,margin:0});
+    return s;
+  };
+  const R=d.r.rows,T=d.r.T,m=d.r.m,n=R.length;
+  const sevc=s=>s==='ok'?K.pos:s==='warn'?K.warn:K.neg;
+  const sevt={ok:'Saudável',warn:'Atenção',bad:'Crítico'};
+  const isNegP=v=>/^\s*[−\-]\s*(R\$|\d)|^\s*\(\d/.test(String(v));
+  const labs=R.map(lab);
+
+  /* capa */
+  {
+    const s=pptx.addSlide(); s.background={color:'0C2A33'};
+    s.addShape(SH.RECTANGLE,{x:0,y:0,w:0.25,h:7.5,fill:{color:K.acc},line:{color:K.acc,width:0}});
+    s.addText(d.selo,{x:0.9,y:1.3,w:11,h:0.4,fontSize:13,bold:true,color:'7FCBDD',fontFace:F,charSpacing:2,margin:0});
+    s.addText('Relatório de Fluxo de Caixa',{x:0.9,y:1.9,w:11.5,h:1.1,fontSize:44,bold:true,color:'FFFFFF',fontFace:F,margin:0});
+    s.addText(d.emp,{x:0.9,y:3.15,w:11.5,h:0.6,fontSize:d.emp.length>42?17:24,color:'E4EDEF',fontFace:F,margin:0});
+    s.addText(`Cenário ${d.cen} · ${d.per} (${d.n} meses)`,{x:0.9,y:3.8,w:11.5,h:0.45,fontSize:16,color:'A9C3CB',fontFace:F,margin:0});
+    s.addText(`Gerado em ${d.data}${d.preset?' · Exemplo aplicado: '+d.preset:''}`,{x:0.9,y:6.3,w:11.5,h:0.4,fontSize:13,color:'A9C3CB',fontFace:F,margin:0});
+    if(d.prep)s.addText(d.prep,{x:0.9,y:6.72,w:11.5,h:0.4,fontSize:13,color:'A9C3CB',fontFace:F,margin:0});
+    if(d.logo){let lh=0.9,lw=lh*d.logo.w/d.logo.h;if(lw>2.8){lw=2.8;lh=lw*d.logo.h/d.logo.w}const pd=0.14;s.addShape(SH.RECTANGLE,{x:W-0.9-lw-2*pd,y:0.8,w:lw+2*pd,h:lh+2*pd,fill:{color:'FFFFFF'},line:{color:'FFFFFF',width:0}});s.addImage({data:d.logo.data,x:W-0.9-lw-pd,y:0.8+pd,w:lw,h:lh})}
+  }
+
+  /* resumo executivo */
+  {
+    const s=slide('Resumo executivo',`Cenário ${d.cen} · ${d.per}`);
+    const kw=(CW-4*0.2)/5;
+    d.kpis.forEach(([l,v,nt,neg],i)=>{
+      const x=M+i*(kw+0.2);
+      s.addShape(SH.RECTANGLE,{x,y:1.5,w:kw,h:1.45,fill:{color:K.surf},line:{color:K.line,width:0.75}});
+      s.addText(l,{x:x+0.12,y:1.58,w:kw-0.24,h:0.3,fontSize:10.5,color:K.muted,fontFace:F,margin:0});
+      s.addText(v,{x:x+0.12,y:1.9,w:kw-0.24,h:0.55,fontSize:20,bold:true,color:neg?K.neg:K.ink,fontFace:F,margin:0,fit:'shrink'});
+      s.addText(nt,{x:x+0.12,y:2.48,w:kw-0.24,h:0.35,fontSize:9.5,color:K.muted,fontFace:F,margin:0,fit:'shrink'});
+    });
+    const bad=d.alertBad;
+    s.addShape(SH.RECTANGLE,{x:M,y:3.2,w:CW,h:0.9,fill:{color:bad?K.negBg:K.posBg},line:{color:bad?K.negBg:K.posBg,width:0}});
+    s.addShape(SH.RECTANGLE,{x:M,y:3.2,w:0.09,h:0.9,fill:{color:bad?K.neg:K.pos},line:{color:bad?K.neg:K.pos,width:0}});
+    s.addText(d.alertTxt,{x:M+0.3,y:3.2,w:CW-0.5,h:0.9,fontSize:13,color:bad?K.neg:K.pos,fontFace:F,valign:'middle',margin:0});
+    s.addText(d.lead,{x:M,y:4.35,w:CW,h:1.0,fontSize:15,color:K.ink,fontFace:F,valign:'top',margin:0});
+    const sum=[['Receita bruta',T.rb],['Receita líquida',T.rl],['EBITDA',T.ebitda],['Lucro líquido',T.ll]];
+    const sw=(CW-3*0.3)/4;
+    sum.forEach(([l,v],i)=>{const x=M+i*(sw+0.3);
+      s.addShape(SH.LINE,{x,y:5.55,w:sw,h:0,line:{color:K.line,width:1}});
+      s.addText(l,{x,y:5.62,w:sw,h:0.3,fontSize:11,color:K.muted,fontFace:F,margin:0});
+      s.addText(money(v),{x,y:5.92,w:sw,h:0.45,fontSize:18,bold:true,color:v<0?K.neg:K.ink,fontFace:F,margin:0})});
+  }
+
+  /* caixa */
+  {
+    const s=slide('Caixa mês a mês','Saldo ao fim de cada mês e variação líquida no mês (R$ mil)');
+    const common={fontFace:F,catAxisLabelFontSize:10,valAxisLabelFontSize:10,catAxisLabelColor:K.muted,valAxisLabelColor:K.muted,valGridLine:{color:K.line,size:0.5},catGridLine:{style:'none'},valAxisLabelFormatCode:'#,##0',showLegend:false};
+    s.addChart(CH.LINE,[{name:'Saldo de caixa (R$ mil)',labels:labs,values:R.map(q=>Math.round(q.fim/1000))}],{...common,x:M,y:1.35,w:CW,h:3.2,chartColors:[K.acc],lineSize:3,lineDataSymbol:'circle',lineDataSymbolSize:n>24?3:7,showValue:n<=24,dataLabelPosition:'t',dataLabelFontSize:n>12?8:9,dataLabelColor:K.muted,dataLabelFormatCode:'#,##0',showTitle:true,title:'Saldo de caixa (R$ mil)',titleFontSize:12,titleColor:K.ink,titleFontFace:F});
+    s.addChart(CH.BAR,[{name:'Variação líquida (R$ mil)',labels:labs,values:R.map(q=>Math.round(q.net/1000))}],{...common,x:M,y:4.6,w:CW,h:2.35,barDir:'col',chartColors:[K.pos],invertedColors:[K.neg],barGapWidthPct:40,showTitle:true,title:'Variação líquida no mês (R$ mil)',titleFontSize:12,titleColor:K.ink,titleFontFace:F,showValue:n<=24,dataLabelFontSize:n>12?8:9,dataLabelColor:K.muted,dataLabelFormatCode:'#,##0',dataLabelPosition:'outEnd'});
+  }
+
+  /* cascata */
+  {
+    const s=slide('Do saldo inicial ao final','Quanto cada atividade adiciona ou consome de caixa no período (R$ mil)');
+    const st=wfSteps(d.r),x0=M+0.7,pw=7.6,t=1.8,b=5.9,band=pw/5,bw=band*0.55;
+    const vals=st.flatMap(q=>[q.a/1000,q.b/1000]),tk=niceTicks(Math.min(0,...vals),Math.max(...vals),4),lo=tk[0],hi=tk[tk.length-1];
+    const Y=v=>b-(v-lo)/(hi-lo)*(b-t);
+    tk.forEach(v=>{s.addShape(SH.LINE,{x:x0,y:Y(v),w:pw,h:0,line:{color:K.line,width:0.5}});
+      s.addText(nf0.format(v),{x:M-0.1,y:Y(v)-0.12,w:0.75,h:0.24,fontSize:9,color:K.muted,fontFace:F,align:'right',margin:0})});
+    st.forEach((q,k)=>{
+      const cx=x0+(k+.5)*band,ya=Y(q.a/1000),yb=Y(q.b/1000),top=Math.min(ya,yb),hh=Math.max(0.03,Math.abs(ya-yb)),c=q.tot?K.acc:q.v>=0?K.pos:K.neg;
+      s.addShape(SH.RECTANGLE,{x:cx-bw/2,y:top,w:bw,h:hh,fill:{color:c},line:{color:c,width:0}});
+      s.addText((!q.tot&&q.v>0?'+':'')+nf0.format(Math.round(q.v/1000)+0),{x:cx-0.7,y:top-0.3,w:1.4,h:0.26,fontSize:11,bold:true,color:K.ink,fontFace:F,align:'center',margin:0});
+      s.addText(q.k.join(' '),{x:cx-0.75,y:b+0.12,w:1.5,h:0.5,fontSize:10,color:K.muted,fontFace:F,align:'center',valign:'top',margin:0});
+    });
+    const items=[['Fluxo operacional',T.fco,'Resultado mais depreciação, menos variação do capital de giro.'],['Investimentos (capex)',T.fci,'Compra de ativos no período.'],['Dívida e lucros',T.fcf,'Amortização da dívida e distribuição de lucros.']];
+    items.forEach(([l,v,tt],i)=>{
+      const y=1.8+i*1.35;
+      s.addText(l,{x:9.2,y,w:3.6,h:0.3,fontSize:12,color:K.muted,fontFace:F,margin:0});
+      s.addText(money(v),{x:9.2,y:y+0.3,w:3.6,h:0.45,fontSize:20,bold:true,color:v<0?K.neg:K.pos,fontFace:F,margin:0});
+      s.addText(tt,{x:9.2,y:y+0.78,w:3.6,h:0.4,fontSize:9.5,color:K.muted,fontFace:F,margin:0,valign:'top'});
+    });
+  }
+
+  /* premissas */
+  {
+    const s=slide('Premissas da simulação','Valores informados no painel no momento da exportação');
+    const cols=[[],[],[]],tot=d.assum.reduce((a,g)=>a+g.rows.length+2,0),per=tot/3;let c=0,acc=0;
+    d.assum.forEach(g=>{const h=g.rows.length+2;if(acc>0&&acc+h/2>per*(c+1)&&c<2)c++;cols[c].push(g);acc+=h});
+    const cw=(CW-2*0.35)/3;
+    cols.forEach((gs,ci)=>{
+      const rows=[];
+      gs.forEach(g=>{
+        rows.push([{text:g.g.toUpperCase(),options:{colspan:2,bold:true,color:K.acc,fontSize:9,border:[{type:'none'},{type:'none'},{pt:1,color:K.accBg},{type:'none'}]}}]);
+        g.rows.forEach(([a,b])=>rows.push([{text:a,options:{color:K.muted,fontSize:9.5}},{text:b,options:{color:isNegP(b)?K.neg:K.ink,bold:true,align:'right',fontSize:9.5}}]));
+        rows.push([{text:' ',options:{colspan:2,fontSize:5}}]);
+      });
+      s.addTable(rows,{x:M+ci*(cw+0.35),y:1.4,w:cw,colW:[cw*0.62,cw*0.38],fontFace:F,rowH:0.22,border:{type:'none'},valign:'middle'});
+    });
+  }
+
+  /* DRE e fluxo */
+  finSections().forEach(sec=>{
+    chunks(n,12).forEach(([a,b],ci,arr)=>{
+      const last=ci===arr.length-1,cols=b-a+(last?1:0),lw0=3.2,cw=Math.min(0.78,(CW-lw0)/cols);
+      const s=slide(sec.t,`R$ mil · parênteses indicam saída ou valor negativo${arr.length>1?' · parte '+(ci+1)+' de '+arr.length:''}`);
+      const hd=[{text:'R$ mil',options:{bold:true,color:K.muted,fill:{color:K.surf}}}];
+      for(let i=a;i<b;i++)hd.push({text:lab(R[i]),options:{bold:true,color:K.muted,align:'right',fill:{color:K.surf}}});
+      if(last)hd.push({text:'Total',options:{bold:true,color:K.muted,align:'right',fill:{color:K.surf}}});
+      const rows=[hd];
+      sec.rows.forEach(([k,nm,sg,t])=>{
+        const o=(v,al)=>({text:cell(v),options:{align:'right',bold:!!t,color:v<-500?K.neg:K.ink,fill:{color:t?K.surf:K.white}}});
+        const row=[{text:rowLabel(k,nm),options:{bold:!!t,color:K.ink,fill:{color:t?K.surf:K.white}}}];
+        for(let i=a;i<b;i++)row.push(o(R[i][k]*sg));
+        if(last){const tv=k==='ini'?T.ini:k==='fim'?T.fim:T[k]*sg;row.push({...o(tv),options:{...o(tv).options,bold:true}})}
+        rows.push(row);
+      });
+      s.addTable(rows,{x:M,y:1.45,w:lw0+cw*cols,colW:[lw0,...Array(cols).fill(cw)],fontFace:F,fontSize:9.5,rowH:0.31,valign:'middle',border:{type:'solid',pt:0.5,color:K.line}});
+    });
+  });
+
+  /* índices */
+  {
+    const gs=d.idx,parts=[gs.slice(0,3),gs.slice(3)];
+    parts.forEach((part,pi)=>{
+      const s=slide('Índices financeiros',`Faixas de referência genéricas de mercado · parte ${pi+1} de 2`);
+      const hs={bold:true,color:K.muted,fill:{color:K.surf},fontSize:9.5};
+      const rows=[[{text:'Indicador',options:hs},{text:'Valor',options:{...hs,align:'right'}},{text:'Referência',options:hs},{text:'Situação',options:hs},{text:'Como é calculado',options:hs}]];
+      part.forEach(([g,items])=>{
+        rows.push([{text:g.toUpperCase(),options:{colspan:5,bold:true,color:K.acc,fontSize:9.5}}]);
+        items.forEach(it=>rows.push([
+          {text:it.n,options:{color:K.ink}},{text:it.v,options:{bold:true,align:'right',color:isNegP(it.v)?K.neg:K.ink}},
+          {text:it.ref||'-',options:{color:K.muted}},
+          {text:it.s?sevt[it.s]:'',options:{bold:true,color:it.s?sevc(it.s):K.ink}},
+          {text:it.f,options:{color:K.muted,fontSize:8.5}}]));
+      });
+      s.addTable(rows,{x:M,y:1.4,w:CW,colW:[3.4,1.6,1.6,1.1,4.63],fontFace:F,fontSize:9.5,rowH:0.28,valign:'middle',border:[{type:'none'},{type:'none'},{pt:0.5,color:K.line},{type:'none'}]});
+    });
+  }
+
+  /* cenários */
+  {
+    const s=slide('Cenários','Pessimista, base e otimista com as mesmas premissas do painel');
+    const keys=['pess','base','otim'],col={pess:K.neg,base:K.acc,otim:K.pos};
+    s.addChart(CH.LINE,keys.map(k=>({name:SCEN[k].nome,labels:labs,values:d.all[k].rows.map(q=>Math.round(q.fim/1000))})),{x:M,y:1.35,w:6.3,h:3.9,fontFace:F,chartColors:keys.map(k=>col[k]),lineSize:2.5,lineDataSymbol:'none',showLegend:true,legendPos:'b',legendFontSize:10,legendColor:K.muted,catAxisLabelFontSize:9,valAxisLabelFontSize:9,catAxisLabelColor:K.muted,valAxisLabelColor:K.muted,valAxisLabelFormatCode:'#,##0',valGridLine:{color:K.line,size:0.5},catGridLine:{style:'none'},showTitle:true,title:'Saldo de caixa (R$ mil)',titleFontSize:12,titleColor:K.ink,titleFontFace:F});
+    const hs={bold:true,color:K.muted,fill:{color:K.surf},align:'right'};
+    const rows=[[{text:'Indicador',options:{...hs,align:'left'}},...keys.map(k=>({text:SCEN[k].nome,options:{...hs,color:k===SC?K.acc:K.muted}}))]];
+    d.scVals.forEach(([nm,vals])=>rows.push([{text:nm,options:{color:K.ink}},...keys.map((k,ki)=>({text:vals[ki],options:{align:'right',bold:k===SC,color:isNegP(vals[ki])?K.neg:K.ink,fill:{color:k===SC?K.accBg:K.white}}}))]));
+    s.addTable(rows,{x:7.1,y:1.4,w:5.73,colW:[2.2,1.18,1.18,1.17],fontFace:F,fontSize:9,rowH:0.33,valign:'middle',border:[{type:'none'},{type:'none'},{pt:0.5,color:K.line},{type:'none'}]});
+    const nw=(CW-2*0.25)/3;
+    d.scNotes.forEach((c,i)=>{const x=M+i*(nw+0.25);
+      s.addShape(SH.RECTANGLE,{x,y:5.5,w:nw,h:1.0,fill:{color:K.surf},line:{color:K.line,width:0.75}});
+      s.addText([{text:c.n,options:{bold:true,color:K.ink,fontSize:11,breakLine:true}},{text:c.t,options:{color:K.muted,fontSize:9.5}}],{x:x+0.12,y:5.58,w:nw-0.24,h:0.85,fontFace:F,valign:'top',margin:0})});
+  }
+
+  /* sensibilidade */
+  {
+    const s=slide('Sensibilidade do caixa',`Prazo médio de recebimento e ${d.cmvNome} variados em torno das premissas atuais · cenário ${d.cen}`);
+    const gw=(CW-0.4)/2;
+    [['min','Menor saldo de caixa no período (R$ mil)'],['fim','Saldo final de caixa (R$ mil)']].forEach(([k,ttl],gi)=>{
+      const g=d.sens[k],x=M+gi*(gw+0.4);
+      s.addText(ttl,{x,y:1.45,w:gw,h:0.35,fontSize:13,bold:true,color:K.ink,fontFace:F,margin:0});
+      const hs={bold:true,color:K.muted,fill:{color:K.surf},align:'right'};
+      const rows=[[{text:`Recebimento (linhas) × ${d.cmvNome} (colunas)`,options:{...hs,align:'left',fontSize:8.5}},...g.cols.map(c=>({text:c,options:{...hs,color:K.ink}}))]];
+      g.rows.forEach(rw=>rows.push([{text:rw.l,options:{color:K.ink}},...rw.v.map((v,j)=>{const bs=rw.base&&j===2;
+        return {text:cell(v),options:{align:'right',bold:bs,color:v<0?K.neg:K.ink,fill:{color:v<0?K.negBg:K.white},border:bs?{type:'solid',pt:2,color:K.acc}:{type:'solid',pt:0.5,color:K.line}}}})]));
+      s.addTable(rows,{x,y:1.9,w:gw,colW:[2.0,...Array(5).fill((gw-2.0)/5)],fontFace:F,fontSize:11,rowH:0.5,valign:'middle',border:{type:'solid',pt:0.5,color:K.line}});
+    });
+    s.addText(`Cada célula recalcula o modelo inteiro com o prazo de recebimento da linha e o ${d.cmvNome} da coluna, mantendo as demais premissas. Células em vermelho indicam caixa negativo. O contorno marca as premissas atuais.`,{x:M,y:5.6,w:CW,h:0.8,fontSize:12,color:K.muted,fontFace:F,margin:0,valign:'top'});
+  }
+
+  /* notas */
+  {
+    const s=slide('Notas e limites do modelo','Leia antes de usar os números');
+    s.addText(d.notes.map(t=>({text:t,options:{bullet:{indent:16},breakLine:true,paraSpaceAfter:7}})),{x:M,y:1.4,w:CW,h:5.4,fontSize:11.5,color:K.ink,fontFace:F,valign:'top',margin:0,fit:'shrink'});
+  }
+  return pptx;
+}
+
+/* ---- Excel ---- */
+async function buildReportXlsx(d){
+  const E=await loadExcelJS();
+  MONEY_FULL=REPORT_FULL;
+  let wb;
+  try{wb=buildReportWb(d,E)}finally{MONEY_FULL=false}
+  return new Uint8Array(await wb.xlsx.writeBuffer());
+}
+function buildReportWb(d,E){
+  const wb=new E.Workbook();
+  wb.creator='Simulador de Fluxo de Caixa'; wb.created=new Date();
+  const R=d.r.rows,T=d.r.T,m=d.r.m,n=R.length;
+  const NUM='#,##0;[Red](#,##0);"-"';
+  const fillOf=a=>({type:'pattern',pattern:'solid',fgColor:{argb:a}});
+  const LINE={style:'thin',color:{argb:'FFDDE4E7'}};
+  const BASEF={name:'Calibri',size:11,color:{argb:'FF12222A'}};
+  const MUTED={name:'Calibri',size:11,color:{argb:'FF566A72'}};
+  /* linhas necessárias para um texto com quebra, com folga (a fonte proporcional varia entre programas) */
+  const need=(t,w)=>Math.max(1,Math.ceil(String(t).length/(w*0.78)));
+  const sumW=(ws,a,b)=>{let s=0;for(let c=a;c<=b;c++)s+=ws.getColumn(c).width||9;return s};
+  const head=(row,left)=>{row.height=22;row.eachCell({includeEmpty:false},c=>{c.font={name:'Calibri',size:11,bold:true,color:{argb:'FFFFFFFF'}};c.fill=fillOf('FF0E6378');c.alignment={vertical:'middle',wrapText:true,horizontal:(left||[1]).includes(c.col)?'left':'right',indent:(left||[1]).includes(c.col)?1:0}})};
+  const body=(row,from,to)=>{for(let c=from;c<=to;c++){const k=row.getCell(c);k.border={bottom:LINE};k.alignment={vertical:'middle',...(k.alignment||{})};if(!k.font||!k.font.bold)k.font={...BASEF,...(k.font||{})}}};
+  const title=(ws,t,sub)=>{const r=ws.addRow([t]);r.font={name:'Calibri',bold:true,size:16,color:{argb:'FF0E6378'}};r.height=32;r.getCell(1).alignment={vertical:'middle'};if(sub){const s=ws.addRow([sub]);s.font=MUTED;s.height=18}};
+  const para=(ws,t,c1,c2,o={})=>{const r=ws.addRow([t]);ws.mergeCells(r.number,c1,r.number,c2);const k=r.getCell(c1);k.alignment={wrapText:true,vertical:'middle',indent:o.fill?1:0};k.font=o.bold?{...BASEF,bold:true}:(o.muted?MUTED:BASEF);if(o.fill)k.fill=fillOf(o.fill);r.height=Math.max(20,need(t,sumW(ws,c1,c2))*15+6);return r};
+  const page=(ws,land,rowsTop)=>{ws.pageSetup={paperSize:9,orientation:land?'landscape':'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0,horizontalCentered:false,margins:{left:.5,right:.5,top:.6,bottom:.6,header:.3,footer:.3}};if(rowsTop)ws.pageSetup.printTitlesRow='1:'+rowsTop;ws.headerFooter={oddFooter:'&L'+(d.aviso||'').replace(/&/g,'&&').slice(0,120)+'&RPágina &P de &N'}};
+  const sevt={ok:'Saudável',warn:'Atenção',bad:'Crítico'};
+
+  /* Resumo */
+  const w1=wb.addWorksheet('Resumo',{properties:{tabColor:{argb:'FF0E6378'}},views:[{showGridLines:false}]});
+  w1.columns=[{width:42},{width:22},{width:62}];
+  title(w1,'Relatório de Fluxo de Caixa');
+  const meta=[[d.emp],['Cenário: '+d.cen],['Período: '+d.per+' ('+d.n+' meses)'],['Gerado em '+d.data+(d.preset?' · Exemplo aplicado: '+d.preset:'')]].concat(d.prep?[[d.prep]]:[],[[d.aviso]]);
+  meta.forEach((a,i)=>{const r=w1.addRow(a);r.font=i===0?{name:'Calibri',size:12,bold:true,color:{argb:'FF12222A'}}:MUTED;r.height=17});
+  if(d.logo){let lh=54,lw=lh*d.logo.w/d.logo.h;if(lw>200){lw=200;lh=lw*d.logo.h/d.logo.w}const lid=wb.addImage({base64:d.logo.data,extension:'png'});w1.addImage(lid,{tl:{col:2.05,row:0.1},ext:{width:lw,height:lh}})}
+  w1.addRow([]);
+  const hr1=w1.addRow(['Indicador','Valor (R$)','Observação']);head(hr1,[1,3]);
+  const items=[['Saldo inicial de caixa',T.ini],['Saldo final de caixa',T.fim],['Menor saldo de caixa',m.minV,'em '+lab(R[m.minI])],['Meses com caixa negativo',m.negMonths,null,1],
+    ['Receita bruta',T.rb],['Receita líquida',T.rl],['EBITDA',T.ebitda,'Margem '+pct(T.rl>0?T.ebitda/T.rl:null)],['Lucro líquido',T.ll],
+    ['Fluxo operacional (FCO)',T.fco],['Fluxo de investimento (FCI)',T.fci],['Fluxo de financiamento (FCF)',T.fcf],['Variação líquida de caixa',T.net],
+    ['Valor da empresa (DCF)',m.ev],['Valor do patrimônio (DCF)',m.eq]];
+  items.forEach(([a,v,o,cnt])=>{const r=w1.addRow([a,v==null||!isFinite(v)?'n/d':v,o||'']);r.height=19;body(r,1,3);r.getCell(1).alignment={vertical:'middle',indent:1};r.getCell(2).numFmt=cnt?'0':NUM;r.getCell(2).alignment={horizontal:'right',vertical:'middle'};r.getCell(3).font=MUTED;r.getCell(3).alignment={vertical:'middle',indent:1};
+    if(['Saldo final de caixa','Variação líquida de caixa','Valor da empresa (DCF)'].includes(a)){r.getCell(1).font={...BASEF,bold:true};r.getCell(2).font={...BASEF,bold:true}}});
+  w1.addRow([]);
+  para(w1,d.alertTxt,1,3,{bold:true,fill:'FFF2F6F7'});
+  para(w1,d.lead,1,3,{});
+  page(w1,false);
+
+  /* Premissas */
+  const w2=wb.addWorksheet('Premissas',{properties:{tabColor:{argb:'FF8FA3AB'}},views:[{state:'frozen',ySplit:1}]});
+  w2.columns=[{width:42},{width:52},{width:38}];
+  head(w2.addRow(['Grupo','Premissa','Valor']),[1,2]);
+  d.assum.forEach(g=>g.rows.forEach(([a,b],i)=>{const r=w2.addRow([i===0?g.g:'',a,b]);r.height=19;body(r,1,3);
+    r.getCell(1).font={...BASEF,bold:true,color:{argb:'FF0E6378'}};r.getCell(1).alignment={vertical:'middle',indent:1};r.getCell(2).alignment={vertical:'middle',indent:1,wrapText:true};r.getCell(3).alignment={horizontal:'right',vertical:'middle'};
+    if(i===0)for(let c=1;c<=3;c++)r.getCell(c).border={top:{style:'thin',color:{argb:'FF8FA3AB'}},bottom:LINE}}));
+  page(w2,false,1);
+
+  /* Projeção */
+  const w3=wb.addWorksheet('Projeção',{properties:{tabColor:{argb:'FF8FA3AB'}},views:[{state:'frozen',xSplit:1,ySplit:1}]});
+  w3.columns=[{width:42},...R.map(()=>({width:12})),{width:14}];
+  head(w3.addRow(['R$',...R.map(lab),'Total']),[1]);
+  ROWS.forEach(([k,nm,sg,t])=>{
+    if(k==='sec'){const r=w3.addRow([nm.toUpperCase()]);r.height=22;for(let c=1;c<=n+2;c++){r.getCell(c).fill=fillOf('FFE3EFF2');r.getCell(c).border={bottom:LINE}}r.getCell(1).font={name:'Calibri',size:11,bold:true,color:{argb:'FF0E6378'}};r.getCell(1).alignment={vertical:'middle',indent:1};return}
+    const r=w3.addRow([rowLabel(k,nm),...R.map(q=>q[k]*sg),null]);
+    const tot=k==='ini'?T.ini:k==='fim'?T.fim:T[k]*sg, rn=r.number;
+    r.getCell(n+2).value=(k==='ini'||k==='fim')?tot:{formula:`SUM(${w3.getColumn(2).letter}${rn}:${w3.getColumn(n+1).letter}${rn})`,result:tot};
+    r.height=19;body(r,1,n+2);r.getCell(1).alignment={vertical:'middle',indent:1};
+    for(let c=2;c<=n+2;c++){r.getCell(c).numFmt=NUM;r.getCell(c).alignment={horizontal:'right',vertical:'middle'}}
+    r.getCell(n+2).font={...BASEF,bold:true};r.getCell(n+2).border={left:{style:'thin',color:{argb:'FF8FA3AB'}},bottom:LINE};
+    if(t)for(let c=1;c<=n+2;c++){const k2=r.getCell(c);k2.font={...BASEF,bold:true};k2.fill=fillOf('FFF2F6F7');k2.border={top:{style:'thin',color:{argb:'FF8FA3AB'}},bottom:LINE,...(c===n+2?{left:{style:'thin',color:{argb:'FF8FA3AB'}}}:{})}}
+  });
+  page(w3,true,1);
+
+  /* Índices */
+  const w4=wb.addWorksheet('Índices',{properties:{tabColor:{argb:'FF8FA3AB'}},views:[{state:'frozen',ySplit:1}]});
+  w4.columns=[{width:26},{width:36},{width:16},{width:22},{width:13},{width:62}];
+  head(w4.addRow(['Grupo','Indicador','Valor','Referência','Situação','Como é calculado']),[1,2,4,5,6]);
+  d.idx.forEach(([g,its])=>its.forEach((it,i)=>{
+    const r=w4.addRow([i===0?g:'',it.n,it.v,it.ref||'',it.s?sevt[it.s]:'',it.f]);
+    body(r,1,6);r.height=Math.max(19,need(it.f||'',62)*15+4);
+    r.getCell(1).font={...BASEF,bold:true,color:{argb:'FF0E6378'}};r.getCell(1).alignment={vertical:'middle',indent:1};
+    r.getCell(2).alignment={vertical:'middle',indent:1,wrapText:true};
+    r.getCell(3).alignment={horizontal:'right',vertical:'middle'};
+    r.getCell(4).alignment={vertical:'middle',indent:1};
+    r.getCell(5).alignment={vertical:'middle',indent:1};
+    if(it.s)r.getCell(5).font={name:'Calibri',size:11,bold:true,color:{argb:it.s==='ok'?'FF1F7346':it.s==='warn'?'FF9A6208':'FFB23A2B'}};
+    r.getCell(6).font={...MUTED,size:10};r.getCell(6).alignment={wrapText:true,vertical:'middle',indent:1};
+    if(i===0)for(let c=1;c<=6;c++)r.getCell(c).border={top:{style:'thin',color:{argb:'FF8FA3AB'}},bottom:LINE};
+  }));
+  page(w4,true,1);
+
+  /* Cenários */
+  const w5=wb.addWorksheet('Cenários',{properties:{tabColor:{argb:'FF8FA3AB'}}});
+  w5.columns=[{width:38},{width:24},{width:24},{width:24}];
+  const keys=['pess','base','otim'];
+  head(w5.addRow(['Indicador',...keys.map(k=>SCEN[k].nome)]),[1]);
+  d.scVals.forEach(([nm,vals])=>{const r=w5.addRow([nm,...vals]);r.height=19;body(r,1,4);r.getCell(1).alignment={vertical:'middle',indent:1};for(let c=2;c<=4;c++)r.getCell(c).alignment={horizontal:'right',vertical:'middle'}});
+  w5.addRow([]);
+  head(w5.addRow(['Saldo final de caixa por mês (R$)',...keys.map(k=>SCEN[k].nome)]),[1]);
+  R.forEach((q,i)=>{const r=w5.addRow([lab(q),...keys.map(k=>d.all[k].rows[i].fim)]);r.height=19;body(r,1,4);r.getCell(1).alignment={vertical:'middle',indent:1};for(let c=2;c<=4;c++){r.getCell(c).numFmt=NUM;r.getCell(c).alignment={horizontal:'right',vertical:'middle'}}});
+  w5.addRow([]);
+  d.scNotes.forEach(c=>para(w5,c.n+': '+c.t,1,4,{muted:true}));
+  page(w5,false);
+
+  /* Sensibilidade */
+  const w6=wb.addWorksheet('Sensibilidade',{properties:{tabColor:{argb:'FF8FA3AB'}}});
+  w6.columns=[{width:40},...Array(5).fill({width:15})];
+  [['min','Menor saldo de caixa no período (R$)'],['fim','Saldo final de caixa (R$)']].forEach(([k,tt],gi)=>{
+    if(gi)w6.addRow([]);
+    const g=d.sens[k];
+    const tr=w6.addRow([tt]);tr.font={name:'Calibri',size:12,bold:true,color:{argb:'FF0E6378'}};tr.height=22;tr.getCell(1).alignment={vertical:'middle'};
+    const hh=w6.addRow([`Recebimento (linhas) × ${d.cmvNome} (colunas)`,...g.cols]);head(hh,[1]);hh.height=34;
+    g.rows.forEach(rw=>{const r=w6.addRow([rw.l,...rw.v]);r.height=19;body(r,1,6);r.getCell(1).alignment={vertical:'middle',indent:1};
+      rw.v.forEach((v,j)=>{const c=r.getCell(j+2);c.numFmt=NUM;c.alignment={horizontal:'right',vertical:'middle'};if(v<0)c.fill=fillOf('FFF6DDD8');if(rw.base&&j===2){c.font={...BASEF,bold:true};c.border={top:{style:'medium'},left:{style:'medium'},bottom:{style:'medium'},right:{style:'medium'}}}})});
+  });
+  w6.addRow([]);
+  para(w6,'Cada célula recalcula o modelo com o prazo de recebimento da linha e o '+d.cmvNome+' da coluna. Vermelho indica caixa negativo; o contorno marca as premissas atuais.',1,6,{muted:true});
+  page(w6,false);
+
+  /* Notas */
+  const w7=wb.addWorksheet('Notas',{properties:{tabColor:{argb:'FF8FA3AB'}},views:[{showGridLines:false}]});
+  w7.getColumn(1).width=100;
+  title(w7,'Notas e limites do modelo');
+  d.notes.forEach(t=>{const r=w7.addRow(['• '+t]);r.getCell(1).alignment={wrapText:true,vertical:'top',indent:1};r.getCell(1).font=BASEF;r.getCell(1).border={bottom:LINE};r.height=need('• '+t,100)*15+8});
+  page(w7,false);
+  return wb;
+}
+
+/* ---- botões ---- */
+const expEl=document.getElementById('exp'), mailmsg=document.getElementById('mailmsg');
+async function exportReport(kind){
+  if(!DL||!RES)return;
+  const btns=expEl.querySelectorAll('button'), nome=kind==='pdf'?'PDF':kind==='pptx'?'PowerPoint':'Excel';
+  btns.forEach(b=>b.disabled=true);
+  mailmsg.textContent='Gerando o relatório em '+nome+'…';
+  try{
+    const d=reportData(REPORT_FULL);
+    const data=kind==='pdf'?await buildPdf(d):kind==='pptx'?await buildPptx(d):await buildReportXlsx(d);
+    await DL.save({filename:repFile(d,kind),data});
+    mailmsg.textContent='Relatório em '+nome+' salvo. Para enviar pelo Outlook, anexe o arquivo à mensagem.';
+  }catch(err){
+    if(err&&err.code==='declined')mailmsg.textContent='Download cancelado.';
+    else if(err&&err.message==='net')mailmsg.textContent='Não foi possível carregar o gerador de '+nome+'. Verifique a conexão e tente de novo.';
+    else{mailmsg.textContent='Não foi possível gerar o relatório em '+nome+'.';try{console.error(err)}catch(e){}}
+  }finally{btns.forEach(b=>b.disabled=false)}
+}
+const expBtn=document.getElementById('expbtn'), expMenu=document.getElementById('expmenu');
+function setMenu(open,focus){
+  expMenu.hidden=!open; expBtn.setAttribute('aria-expanded',String(open));
+  if(open&&focus){const f=expMenu.querySelector('button');if(f)f.focus()}
+}
+expBtn.addEventListener('click',()=>setMenu(expMenu.hidden,false));
+expBtn.addEventListener('keydown',e=>{if(e.key==='ArrowDown'){e.preventDefault();setMenu(true,true)}});
+expMenu.addEventListener('keydown',e=>{
+  const its=[...expMenu.querySelectorAll('button')], i=its.indexOf(document.activeElement);
+  if(e.key==='ArrowDown'){e.preventDefault();its[(i+1)%its.length].focus()}
+  else if(e.key==='ArrowUp'){e.preventDefault();its[(i-1+its.length)%its.length].focus()}
+  else if(e.key==='Tab')setMenu(false);
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!expMenu.hidden){setMenu(false);expBtn.focus()}});
+document.addEventListener('click',e=>{if(!expEl.contains(e.target))setMenu(false)});
+expEl.addEventListener('click',e=>{const b=e.target.closest('#expmenu button[data-x]');if(b){setMenu(false);expBtn.focus();exportReport(b.dataset.x)}});
+
+document.getElementById('undo').addEventListener('click',undo);
+document.getElementById('redo').addEventListener('click',redo);
+document.addEventListener('keydown',e=>{
+  if(!(e.ctrlKey||e.metaKey)||e.altKey)return;
+  const k=e.key.toLowerCase();
+  if(k==='z'&&!e.shiftKey){e.preventDefault();undo()}
+  else if(k==='y'||(k==='z'&&e.shiftKey)){e.preventDefault();redo()}
+});
+buildFields(); buildSeg(); buildTabs(); renderPresets(); update();
+CUR=snap(); updateHistBtns();
+</script>
+</body>
+</html>
