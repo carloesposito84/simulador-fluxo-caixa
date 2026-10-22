@@ -278,6 +278,7 @@
 
       <div id="p-resumo">
         <p class="lead" id="lead"></p>
+        <p class="hint" id="ibs-aviso" hidden>Projeções a partir de janeiro de 2027 não consideram a transição para o IBS e a CBS. Ajuste a alíquota efetiva dos impostos sobre vendas, se necessário, e valide com o contador da empresa.</p>
         <div class="card">
           <h2>Saldo de caixa mês a mês</h2>
           <p class="hint">Toque ou passe o cursor sobre uma coluna para ver os valores do mês.</p>
@@ -331,6 +332,7 @@
           <li>Importação: aceita .xlsx ou .csv com uma linha por premissa (colunas Campo, Valor e Chave). O arquivo é lido no navegador. Valores fora da faixa ou não reconhecidos são ignorados com aviso, linhas em branco mantêm o valor atual e a importação inteira pode ser desfeita.</li>
           <li>Relatório: os botões PDF, PowerPoint e Excel geram o arquivo no seu navegador, com premissas, projeção mensal, índices, cenários e sensibilidade do momento. No Excel os valores saem em reais, como números, e o total de cada linha da projeção é uma fórmula SUM. Os números da simulação não saem do navegador; só as bibliotecas de geração do arquivo são baixadas de um CDN. O e-mail não leva anexo: salve o arquivo e anexe-o à mensagem no Outlook.</li>
           <li>Valor da empresa (DCF): fluxo de caixa livre do período mais perpetuidade, anualizado, descontado pelo WACC informado. É uma estimativa simplificada, sensível à taxa e ao crescimento escolhidos.</li>
+          <li id="n-ibs" hidden>Reforma tributária: as projeções a partir de janeiro de 2027 não consideram a transição para o IBS e a CBS. Para refletir a sua expectativa, ajuste a alíquota efetiva dos impostos sobre vendas e valide o efeito com o contador da empresa.</li>
           <li>Referências dos índices (Saudável, Atenção, Crítico): faixas genéricas de mercado. O adequado varia por setor, porte e política de crédito.</li>
         </ul>
       </details>
@@ -884,6 +886,7 @@ function update(){
   document.getElementById('kpis').innerHTML=kp.map(([l,v,n,neg])=>`<div class="kpi"><div class="l">${l}</div><div class="v${neg?' neg':''}">${v}</div><div class="n">${n}</div></div>`).join('');
   const out=T.fci+T.fcf;
   document.getElementById('lead').textContent=`No cenário ${SCEN[SC].nome}, o caixa vai de ${money(T.ini)} para ${money(T.fim)}. A operação gera ${money(T.fco)} já descontado o capital de giro; investimentos, amortização da dívida e distribuição de lucros somam ${money(out)}.`;
+  {const ibs=r.rows[r.rows.length-1].yr>=2027;document.getElementById('ibs-aviso').hidden=!ibs;document.getElementById('n-ibs').hidden=!ibs}
   document.getElementById('table').innerHTML=buildTable(r);
   document.getElementById('p-idx').innerHTML=buildIdx(r,P);
   document.getElementById('scen-notes').innerHTML=scenNotes();
@@ -1555,7 +1558,7 @@ function reportDataNow(){
     assum:assumGroups(), r, all:ALL, idx:idxGroups(r,P), scDefs:SCDEFS, scVals:SCDEFS.map(([nm,f])=>[nm,['pess','base','otim'].map(k=>f(ALL[k]))]), scNotes:scenNotesData(),
     sens:{min:sensData('min'),fim:sensData('fim')},
     cmvNome:P.tipo===1?'custo dos serviços':'CMV',
-    notes:[...document.querySelectorAll('.about li')].map(li=>li.textContent.trim()).filter(t=>!/^(Importação|Relatório):/.test(t)).map(t=>temNome()&&/^Os números dos exemplos são fictícios/.test(t)?'Esta é uma simulação elaborada com as premissas informadas para a empresa. Não é auditada, não substitui a contabilidade nem a análise de um profissional, e os resultados reais podem diferir.':t)
+    notes:[...document.querySelectorAll('.about li:not([hidden])')].map(li=>li.textContent.trim()).filter(t=>!/^(Importação|Relatório):/.test(t)).map(t=>temNome()&&/^Os números dos exemplos são fictícios/.test(t)?'Esta é uma simulação elaborada com as premissas informadas para a empresa. Não é auditada, não substitui a contabilidade nem a análise de um profissional, e os resultados reais podem diferir.':t)
   };
 }
 function repFile(d,ext){const sl=d.nome?d.emp.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,30):'';return `relatorio-fluxo-caixa-${sl?sl+'-':''}${d.cenKey}-${d.ini}-${d.fim}.${ext}`}
