@@ -130,6 +130,8 @@
   tr.t td{font-weight:600;background:var(--surface2)}
   tr.sec td{font:500 11px var(--f-mono);text-transform:uppercase;letter-spacing:.07em;color:var(--accent);padding-top:14px;background:var(--surface)}
   td.neg{color:var(--neg)}
+  tr.pr td{font-style:italic;font-size:12px;color:var(--muted)}
+  tr.pr td.neg{color:var(--neg)}
   th.tot,td.tot{border-left:1px solid var(--line);font-weight:600}
   td.act,th.act{background:var(--accent-bg)}
   tr.t td.act{background:var(--accent-bg)}
@@ -405,6 +407,7 @@ function compute(p,key){
     imob+=capex-dep; pl+=ll-div;
     rows.push({i,mi,yr,rb,imp,rl,cmv,lb,fix,vr,inad,ebitda,dep,ebit,jur,lair,ir,ll,dNwc,fco,capex,fci,amort,div,fcf,net,ini,fim:caixa,cr,est,forn,nwc,debt,imob,pl,nopat,fcl});
   }
+  rows.forEach((q,i)=>{q.gRb=i>0&&rows[i-1].rb>0?q.rb/rows[i-1].rb-1:null});
   const sum=k=>rows.reduce((a,r)=>a+r[k],0);
   const T={};
   ['rb','imp','rl','cmv','lb','fix','vr','inad','ebitda','dep','ebit','jur','lair','ir','ll','dNwc','fco','capex','fci','amort','div','fcf','net','nopat','fcl'].forEach(k=>T[k]=sum(k));
@@ -441,6 +444,7 @@ const money=v=>{if(v==null||!isFinite(v))return 'n/d';if(MONEY_FULL){const r=Mat
 const pct=v=>v==null||!isFinite(v)?'n/d':nf1.format(v*100)+'%';
 const xx=v=>v==null||!isFinite(v)?'n/d':nf2.format(v)+'x';
 const dias=v=>nf0.format(Math.round(v))+' dias';
+const pRow=v=>v==null||!isFinite(v)?'–':(v>=0?'+':'−')+nf1.format(Math.abs(v)*100)+'%';
 const cell=v=>Math.abs(v)<500?'–':(v<0?'('+mil(-v)+')':mil(v));
 const lab=q=>MESES[q.mi]+'/'+String(q.yr).slice(2);
 
@@ -669,7 +673,7 @@ function buildIdx(r,p){
 /* ---------- tabela ---------- */
 const ROWS=[
  ['sec','Demonstração de resultado'],
- ['rb','Receita bruta',1],['imp','(−) Impostos sobre vendas',-1],['rl','Receita líquida',1,'t'],['cmv','(−) CMV',-1],['lb','Lucro bruto',1,'t'],
+ ['rb','Receita bruta',1],['gRb','Variação % da receita bruta (m/m)',1,null,1],['imp','(−) Impostos sobre vendas',-1],['rl','Receita líquida',1,'t'],['cmv','(−) CMV',-1],['lb','Lucro bruto',1,'t'],
  ['fix','(−) Despesas fixas',-1],['vr','(−) Despesas variáveis',-1],['inad','(−) Inadimplência',-1],['ebitda','EBITDA',1,'t'],['dep','(−) Depreciação',-1],['ebit','EBIT',1,'t'],
  ['jur','(−) Juros',-1],['ir','(−) IR e CSLL',-1],['ll','Lucro líquido',1,'t'],
  ['sec','Fluxo de caixa'],
@@ -684,8 +688,9 @@ function rowLabel(k,n){
 }
 function buildTable(r){
   let h=`<table><thead><tr><th>R$ mil</th>${r.rows.map(q=>`<th>${lab(q)}</th>`).join('')}<th class="tot">Total</th></tr></thead><tbody>`;
-  ROWS.forEach(([k,n,s,t])=>{
+  ROWS.forEach(([k,n,s,t,pr])=>{
     if(k==='sec'){h+=`<tr class="sec"><td colspan="${r.rows.length+2}">${n}</td></tr>`;return}
+    if(pr){h+=`<tr class="pr"><td>${n}</td>${r.rows.map(q=>`<td class="${q[k]!=null&&q[k]<0?'neg':''}">${pRow(q[k])}</td>`).join('')}<td class="tot">–</td></tr>`;return}
     h+=`<tr${t?' class="t"':''}><td>${rowLabel(k,n)}</td>`;
     r.rows.forEach(q=>{const v=q[k]*s;h+=`<td class="${t&&v<-500?'neg':''}">${cell(v)}</td>`});
     const tv=k==='ini'?r.T.ini:k==='fim'?r.T.fim:r.T[k]*s;
@@ -913,7 +918,7 @@ function summaryText(){
    'Valor da empresa (DCF): '+money(m.ev),
    '',
    temNome()?'Simulação baseada nas premissas informadas; os resultados reais podem diferir. Não constitui auditoria, parecer contábil nem recomendação financeira.':'Modelo educacional, sem valor de recomendação financeira.'
-  ].concat(prepTxt()?['',prepTxt()]:[]);
+  ].concat(prepTxt()?['',prepTxt()]:[],['',CREDITO]);
   return L.join('\n');
 }
 function updateMail(){
@@ -1005,7 +1010,7 @@ ${sec('Saldo de caixa mês a mês')}${img(emCash(d),'Gráfico do saldo de caixa 
 ${sec('Do saldo inicial ao final')}${img(emWf(d),'Gráfico da variação do caixa por componente')}
 ${sec('Comparação de cenários')}${img(emSc(d),'Gráfico do saldo de caixa por cenário')}
 <tr><td style="padding:14px 28px 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse"><tr>${th('Indicador','left')}${th('Pessimista')}${th('<span style="color:'+RK.acc+'">Base</span>')}${th('Otimista')}</tr>${srows}</table></td></tr>
-<tr><td style="${F}padding:20px 28px 22px;font-size:11px;line-height:1.5;color:${RK.muted}">${d.prep?`<b style="color:${RK.ink}">${esc(d.prep)}</b><br>`:''}${esc(d.aviso)}<br>Valores em R$ (mil = milhares, mi = milhões). Gerado em ${esc(d.data)}.</td></tr>
+<tr><td style="${F}padding:20px 28px 22px;font-size:11px;line-height:1.5;color:${RK.muted}">${d.prep?`<b style="color:${RK.ink}">${esc(d.prep)}</b><br>`:''}${esc(d.aviso)}<br>Valores em R$ (mil = milhares, mi = milhões). Gerado em ${esc(d.data)}.<br>${esc(CREDITO)}</td></tr>
 </table></div>`;
 }
 document.getElementById('copy').addEventListener('click',async()=>{
@@ -1127,6 +1132,8 @@ document.getElementById('mailmenu').addEventListener('click',e=>{
 
 /* ---------- exemplos prontos ---------- */
 const AUTOR='Carlo Esposito';
+const APP_URL='carloesposito84.github.io/simulador-fluxo-caixa';
+const CREDITO='Gerado pelo Simulador de Fluxo de Caixa · '+APP_URL;
 const temNome=()=>String(P.nome||'').trim().length>0;
 const empNome=()=>temNome()?String(P.nome).trim():(P.tipo===1?'Horizonte Serviços Empresariais':'Vale Verde Distribuidora');
 const cleanNome=v=>String(v==null?'':v).replace(/[\u0000-\u001f\u007f]/g,' ').replace(/\s+/g,' ').trim().replace(/^'(?=[=+\-@])/,'').slice(0,60);
@@ -1635,9 +1642,9 @@ function buildPdfBody(d){
     yAxis(x+ml,x+w-mr,tk2,Y2,v=>nf0.format(v));
     const bw=Math.max(1,iw/n*.55);
     nv.forEach((v,i)=>{const yy=Y2(Math.max(v,0)),hh=Math.max(.3,Math.abs(Y2(v)-Y2(0)));fc(v>=0?K.pos:K.neg);doc.rect(X(i)-bw/2,yy,bw,hh,'F')});
+    const stpB=Math.max(1,Math.ceil(4.8/(iw/n)));
     nv.forEach((v,i)=>{
-      if(Math.round(v)===0&&Math.abs(v)<0.5)return;
-      if(!(i%stp===0||i===n-1)||(i!==n-1&&n-1-i<stp*0.8))return;
+      if(!(i%stpB===0||i===n-1)||(i!==n-1&&n-1-i<stpB*0.8))return;
       font(fs);tc(v<0?K.neg:K.ink);
       const val=nf0.format(Math.round(v));
       if(v>=0)tx(val,X(i),Y2(v)-1,{align:'center'});else tx(val,X(i),Y2(v)+2.8,{align:'center'});
@@ -1744,8 +1751,9 @@ function buildPdfBody(d){
     for(let i=a;i<b;i++)tx(lab(R[i]),M+lab0+(i-a+1)*cw-1.5,yy,{align:'right'});
     if(last)tx('Total',M+lab0+cols*cw-1.5,yy,{align:'right'});
     yy+=4;
-    ROWS.forEach(([k,nm,s,t])=>{
+    ROWS.forEach(([k,nm,s,t,pr])=>{
       if(k==='sec'){yy+=2.4;font(7,1);tc(K.acc);tx(nm.toUpperCase(),M+1.5,yy+1.6);yy+=6.3;return}
+      if(pr){font(7);tc(K.muted);tx(rowLabel(k,nm),M+1.5,yy);for(let i=a;i<b;i++){const g=R[i][k];tc(g!=null&&g<0?K.neg:K.muted);tx(pRow(g),M+lab0+(i-a+1)*cw-1.5,yy,{align:'right'})}if(last){tc(K.muted);tx('–',M+lab0+cols*cw-1.5,yy,{align:'right'})}yy+=4.2;return}
       if(t){fc(K.surf);doc.rect(M,yy-3.4,lab0+cw*cols,4.7,'F')}
       font(7.5,!!t);tc(K.ink);tx(rowLabel(k,nm),M+1.5,yy);
       for(let i=a;i<b;i++){const v=R[i][k]*s;font(7.5,!!t);tc(v<-500?K.neg:K.ink);tx(cell(v),M+lab0+(i-a+1)*cw-1.5,yy,{align:'right'})}
@@ -1831,11 +1839,12 @@ function buildPdfBody(d){
   /* rodapé e numeração */
   const N=doc.getNumberOfPages();
   for(let i=1;i<=N;i++){
-    doc.setPage(i);dc(K.line);lw(.2);doc.line(M,H-12,W-M,H-12);
+    doc.setPage(i);dc(K.line);lw(.2);doc.line(M,H-14.6,W-M,H-14.6);
     font(7);tc(K.muted);
-    tx(fit(d.aviso,CW),M,H-8.4);
-    tx(fit(d.emp+' · Cenário '+d.cen+(d.prep?' · '+d.prep:''),CW-30),M,H-4.6);
-    tx('Página '+i+' de '+N,W-M,H-4.6,{align:'right'});
+    tx(fit(d.aviso,CW),M,H-10.9);
+    tx(fit(d.emp+' · Cenário '+d.cen+(d.prep?' · '+d.prep:''),CW),M,H-7.6);
+    tx(fit(CREDITO,CW-30),M,H-4.3);
+    tx('Página '+i+' de '+N,W-M,H-4.3,{align:'right'});
     if(d.logo&&i>1){let lh=7,lw=lh*d.logo.w/d.logo.h;if(lw>26){lw=26;lh=lw*d.logo.h/d.logo.w}doc.addImage(d.logo.data,'PNG',W-M-lw,6,lw,lh)}
   }
   return doc.output('arraybuffer');
@@ -1847,7 +1856,29 @@ async function buildPptx(d){
   MONEY_FULL=REPORT_FULL;
   let pptx;
   try{pptx=buildPptxDoc(d)}finally{MONEY_FULL=false}
-  return await pptx.write({outputType:'arraybuffer'});
+  const buf=await pptx.write({outputType:'arraybuffer'});
+  try{return await pptxTroughLabels(buf,d)}catch(e){try{console.warn('rótulos dos vales não ajustados',e)}catch(_){}return buf}
+}
+/* Rótulos do gráfico de saldo: nos vales o valor vai abaixo do ponto (padrão: acima), para a linha não passar por cima do número. */
+async function pptxTroughLabels(buf,d){
+  const Z=window.JSZip; if(!Z)return buf;
+  const R=d.r.rows,n=R.length; if(n>24)return buf;
+  const v=R.map(q=>Math.round(q.fim/1000)), idx=[];
+  for(let i=1;i<n-1;i++)if(v[i]<v[i-1]&&v[i]<v[i+1])idx.push(i);
+  if(!idx.length)return buf;
+  const zip=await Z.loadAsync(buf);
+  let changed=false;
+  for(const f of Object.keys(zip.files)){
+    if(!/^ppt\/charts\/chart\d+\.xml$/.test(f))continue;
+    let x=await zip.file(f).async('string');
+    if(x.indexOf('<c:lineChart>')<0||x.indexOf('Saldo de caixa (R$ mil)')<0)continue;
+    const m=x.match(/<c:dLbls>(<c:numFmt[^>]*\/>)(<c:txPr>[\s\S]*?<\/c:txPr>)<c:dLblPos val="t"\/>/);
+    if(!m)continue;
+    const one=i=>'<c:dLbl><c:idx val="'+i+'"/>'+m[1]+m[2]+'<c:dLblPos val="b"/><c:showLegendKey val="0"/><c:showVal val="1"/><c:showCatName val="0"/><c:showSerName val="0"/><c:showPercent val="0"/><c:showBubbleSize val="0"/></c:dLbl>';
+    x=x.replace('<c:dLbls>','<c:dLbls>'+idx.map(one).join(''));
+    zip.file(f,x);changed=true;
+  }
+  return changed?await zip.generateAsync({type:'arraybuffer',compression:'DEFLATE'}):buf;
 }
 function buildPptxDoc(d){
   const pptx=new window.PptxGenJS();
@@ -1860,8 +1891,9 @@ function buildPptxDoc(d){
     objects:[
       {rect:{x:0,y:0,w:W,h:0.12,fill:{color:K.acc}}},
       {line:{x:M,y:7.02,w:CW,h:0,line:{color:K.line,width:0.75}}},
-      {text:{text:d.aviso,options:{x:M,y:7.04,w:11,h:0.22,fontSize:8,color:K.muted,fontFace:F,margin:0}}},
-      ...(d.prep?[{text:{text:d.prep,options:{x:M,y:7.25,w:11,h:0.2,fontSize:8,color:K.muted,fontFace:F,margin:0}}}]:[]),
+      {text:{text:d.aviso,options:{x:M,y:7.04,w:11,h:0.16,fontSize:8,color:K.muted,fontFace:F,margin:0}}},
+      ...(d.prep?[{text:{text:d.prep,options:{x:M,y:7.2,w:11,h:0.16,fontSize:8,color:K.muted,fontFace:F,margin:0}}}]:[]),
+      {text:{text:CREDITO,options:{x:M,y:d.prep?7.36:7.2,w:11,h:0.16,fontSize:8,color:K.muted,fontFace:F,margin:0}}},
       ...(d.logo?[(()=>{let lh=0.4,lw=lh*d.logo.w/d.logo.h;if(lw/1>1.6){lw=1.6;lh=lw*d.logo.h/d.logo.w}return {image:{x:W-M-lw,y:0.3,w:lw,h:lh,data:d.logo.data}}})()]:[])
     ],
     slideNumber:{x:W-M-0.8,y:7.07,w:0.8,h:0.3,fontSize:9,color:K.muted,fontFace:F,align:'right'}});
@@ -1971,7 +2003,8 @@ function buildPptxDoc(d){
       for(let i=a;i<b;i++)hd.push({text:lab(R[i]),options:{bold:true,color:K.muted,align:'right',fill:{color:K.surf}}});
       if(last)hd.push({text:'Total',options:{bold:true,color:K.muted,align:'right',fill:{color:K.surf}}});
       const rows=[hd];
-      sec.rows.forEach(([k,nm,sg,t])=>{
+      sec.rows.forEach(([k,nm,sg,t,pr])=>{
+        if(pr){const row=[{text:nm,options:{italic:true,color:K.muted,fontSize:8.5,fill:{color:K.white}}}];for(let i=a;i<b;i++){const g=R[i][k];row.push({text:pRow(g),options:{align:'right',italic:true,fontSize:8.5,color:g!=null&&g<0?K.neg:K.muted,fill:{color:K.white}}})}if(last)row.push({text:'–',options:{align:'right',italic:true,fontSize:8.5,color:K.muted,fill:{color:K.white}}});rows.push(row);return}
         const o=(v,al)=>({text:cell(v),options:{align:'right',bold:!!t,color:v<-500?K.neg:K.ink,fill:{color:t?K.surf:K.white}}});
         const row=[{text:rowLabel(k,nm),options:{bold:!!t,color:K.ink,fill:{color:t?K.surf:K.white}}}];
         for(let i=a;i<b;i++)row.push(o(R[i][k]*sg));
@@ -2064,14 +2097,14 @@ function buildReportWb(d,E){
   const body=(row,from,to)=>{for(let c=from;c<=to;c++){const k=row.getCell(c);k.border={bottom:LINE};k.alignment={vertical:'middle',...(k.alignment||{})};if(!k.font||!k.font.bold)k.font={...BASEF,...(k.font||{})}}};
   const title=(ws,t,sub)=>{const r=ws.addRow([t]);r.font={name:'Calibri',bold:true,size:16,color:{argb:'FF0E6378'}};r.height=32;r.getCell(1).alignment={vertical:'middle'};if(sub){const s=ws.addRow([sub]);s.font=MUTED;s.height=18}};
   const para=(ws,t,c1,c2,o={})=>{const r=ws.addRow([t]);ws.mergeCells(r.number,c1,r.number,c2);const k=r.getCell(c1);k.alignment={wrapText:true,vertical:'middle',indent:o.fill?1:0};k.font=o.bold?{...BASEF,bold:true}:(o.muted?MUTED:BASEF);if(o.fill)k.fill=fillOf(o.fill);r.height=Math.max(20,need(t,sumW(ws,c1,c2))*15+6);return r};
-  const page=(ws,land,rowsTop)=>{ws.pageSetup={paperSize:9,orientation:land?'landscape':'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0,horizontalCentered:false,margins:{left:.5,right:.5,top:.6,bottom:.6,header:.3,footer:.3}};if(rowsTop)ws.pageSetup.printTitlesRow='1:'+rowsTop;ws.headerFooter={oddFooter:'&L'+(d.aviso||'').replace(/&/g,'&&').slice(0,120)+'&RPágina &P de &N'}};
+  const page=(ws,land,rowsTop)=>{ws.pageSetup={paperSize:9,orientation:land?'landscape':'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0,horizontalCentered:false,margins:{left:.5,right:.5,top:.6,bottom:.6,header:.3,footer:.3}};if(rowsTop)ws.pageSetup.printTitlesRow='1:'+rowsTop;ws.headerFooter={oddFooter:'&L'+(d.aviso||'').replace(/&/g,'&&').slice(0,110)+'&C'+CREDITO.replace(/&/g,'&&').slice(0,90)+'&RPágina &P de &N'}};
   const sevt={ok:'Saudável',warn:'Atenção',bad:'Crítico'};
 
   /* Resumo */
   const w1=wb.addWorksheet('Resumo',{properties:{tabColor:{argb:'FF0E6378'}},views:[{showGridLines:false}]});
   w1.columns=[{width:42},{width:22},{width:62}];
   title(w1,'Relatório de Fluxo de Caixa');
-  const meta=[[d.emp],['Cenário: '+d.cen],['Período: '+d.per+' ('+d.n+' meses)'],['Gerado em '+d.data+(d.preset?' · Exemplo aplicado: '+d.preset:'')]].concat(d.prep?[[d.prep]]:[],[[d.aviso]]);
+  const meta=[[d.emp],['Cenário: '+d.cen],['Período: '+d.per+' ('+d.n+' meses)'],['Gerado em '+d.data+(d.preset?' · Exemplo aplicado: '+d.preset:'')]].concat(d.prep?[[d.prep]]:[],[[d.aviso],[CREDITO]]);
   meta.forEach((a,i)=>{const r=w1.addRow(a);r.font=i===0?{name:'Calibri',size:12,bold:true,color:{argb:'FF12222A'}}:MUTED;r.height=17});
   if(d.logo){let lh=54,lw=lh*d.logo.w/d.logo.h;if(lw>200){lw=200;lh=lw*d.logo.h/d.logo.w}const lid=wb.addImage({base64:d.logo.data,extension:'png'});w1.addImage(lid,{tl:{col:2.05,row:0.1},ext:{width:lw,height:lh}})}
   w1.addRow([]);
@@ -2100,7 +2133,8 @@ function buildReportWb(d,E){
   const w3=wb.addWorksheet('Projeção',{properties:{tabColor:{argb:'FF8FA3AB'}},views:[{state:'frozen',xSplit:1,ySplit:1}]});
   w3.columns=[{width:42},...R.map(()=>({width:12})),{width:14}];
   head(w3.addRow(['R$',...R.map(lab),'Total']),[1]);
-  ROWS.forEach(([k,nm,sg,t])=>{
+  ROWS.forEach(([k,nm,sg,t,pr])=>{
+    if(pr){const r=w3.addRow([nm,...R.map(q=>q[k]),null]);r.height=17;r.getCell(1).font={name:'Calibri',size:10,italic:true,color:{argb:'FF566A72'}};r.getCell(1).alignment={vertical:'middle',indent:2};for(let c=2;c<=n+1;c++){const k2=r.getCell(c);k2.numFmt='+0.0%;[Red]-0.0%;0.0%';k2.font={name:'Calibri',size:10,italic:true,color:{argb:'FF566A72'}};k2.alignment={horizontal:'right',vertical:'middle'};k2.border={bottom:LINE}}r.getCell(1).border={bottom:LINE};r.getCell(n+2).border={left:{style:'thin',color:{argb:'FF8FA3AB'}},bottom:LINE};return}
     if(k==='sec'){const r=w3.addRow([nm.toUpperCase()]);r.height=22;for(let c=1;c<=n+2;c++){r.getCell(c).fill=fillOf('FFE3EFF2');r.getCell(c).border={bottom:LINE}}r.getCell(1).font={name:'Calibri',size:11,bold:true,color:{argb:'FF0E6378'}};r.getCell(1).alignment={vertical:'middle',indent:1};return}
     const r=w3.addRow([rowLabel(k,nm),...R.map(q=>q[k]*sg),null]);
     const tot=k==='ini'?T.ini:k==='fim'?T.fim:T[k]*sg, rn=r.number;
